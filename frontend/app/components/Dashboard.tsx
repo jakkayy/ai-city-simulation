@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react"
 import { getSocket } from "../lib/socket"
 import { fetchStatus, startSim, stopSim, stepSim } from "../lib/api"
 import CitizenCard from "./CitizenCard"
+import ReplayPanel from "./ReplayPanel"
 import type { TickData, SimStatus, SimEvent } from "../lib/types"
 
 const CRISIS_STYLE: Record<string, string> = {
@@ -12,11 +13,24 @@ const CRISIS_STYLE: Record<string, string> = {
   collapse: "bg-red-900 border-red-500 text-red-200",
 }
 
+interface CityManagerProposal {
+  policy_type: string
+  parameters: Record<string, unknown>
+  reason?: string
+}
+
+interface AdvisorMessage {
+  crisis_level: string
+  advice: string
+}
+
 export default function Dashboard() {
   const [tick, setTick] = useState<TickData | null>(null)
   const [status, setStatus] = useState<SimStatus | null>(null)
   const [recentEvents, setRecentEvents] = useState<SimEvent[]>([])
   const [connected, setConnected] = useState(false)
+  const [proposal, setProposal] = useState<CityManagerProposal | null>(null)
+  const [advisorMsg, setAdvisorMsg] = useState<AdvisorMessage | null>(null)
 
   useEffect(() => {
     fetchStatus().then(setStatus).catch(console.error)
@@ -31,16 +45,24 @@ export default function Dashboard() {
         setRecentEvents((prev) => [...data.events, ...prev].slice(0, 20))
       }
     })
+    socket.on("city_manager_proposal", (data: CityManagerProposal) => {
+      setProposal(data)
+    })
+    socket.on("advisor_message", (data: AdvisorMessage) => {
+      setAdvisorMsg(data)
+    })
     return () => {
       socket.off("connect")
       socket.off("disconnect")
       socket.off("tick")
+      socket.off("city_manager_proposal")
+      socket.off("advisor_message")
     }
   }, [])
 
   const handleStart = useCallback(async () => {
     await startSim()
-    setStatus((s) => s ? { ...s, is_running: true } : s)
+    setStatus((s) => s ? { ...s, is_running: true, replay_mode: false } : s)
   }, [])
 
   const handleStop = useCallback(async () => {
@@ -62,6 +84,8 @@ export default function Dashboard() {
   const crisis = tick?.crisis_level ?? null
   const citizens = tick?.citizens ?? []
   const pops = tick?.zone_populations ?? { A: 0, B: 0, C: 0 }
+  const isRunning = status?.is_running ?? false
+  const replayMode = status?.replay_mode ?? false
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 flex flex-col gap-4">
@@ -74,31 +98,45 @@ export default function Dashboard() {
             <span className={connected ? "text-green-400" : "text-red-400"}>
               {connected ? "● live" : "○ disconnected"}
             </span>
+            {replayMode && (
+              <span className="ml-2 text-purple-400 font-semibold">• replay</span>
+            )}
           </p>
         </div>
 
         {/* Controls */}
-        <div className="flex gap-2">
-          <button
-            onClick={handleStep}
-            className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition"
-          >
-            Step
-          </button>
-          {status?.is_running ? (
-            <button
-              onClick={handleStop}
-              className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 rounded transition"
-            >
-              Stop
-            </button>
-          ) : (
-            <button
-              onClick={handleStart}
-              className="px-3 py-1.5 text-sm bg-green-700 hover:bg-green-600 rounded transition"
-            >
-              Start
-            </button>
+        <div className="flex gap-2 items-center">
+          <ReplayPanel
+            isRunning={isRunning}
+            replayMode={replayMode}
+            onReplayStart={() => setStatus((s) => s ? { ...s, is_running: true, replay_mode: true } : s)}
+            onReplayStop={() => setStatus((s) => s ? { ...s, is_running: false, replay_mode: false } : s)}
+          />
+          {!replayMode && (
+            <>
+              <button
+                onClick={handleStep}
+                disabled={isRunning}
+                className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition disabled:opacity-40"
+              >
+                Step
+              </button>
+              {isRunning ? (
+                <button
+                  onClick={handleStop}
+                  className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 rounded transition"
+                >
+                  Stop
+                </button>
+              ) : (
+                <button
+                  onClick={handleStart}
+                  className="px-3 py-1.5 text-sm bg-green-700 hover:bg-green-600 rounded transition"
+                >
+                  Start
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -107,6 +145,46 @@ export default function Dashboard() {
       {crisis && (
         <div className={`border rounded-lg px-4 py-2 text-sm font-semibold ${CRISIS_STYLE[crisis]}`}>
           ⚠ City Crisis: {crisis.toUpperCase()} — avg happiness {avgHappiness.toFixed(1)}
+        </div>
+      )}
+
+      {/* Policy Advisor alert */}
+      {advisorMsg && (
+        <div className="border border-orange-500 bg-orange-950 rounded-lg px-4 py-3 flex justify-between items-start gap-3">
+          <div>
+            <p className="text-xs font-bold text-orange-300 mb-1">
+              Policy Advisor — {advisorMsg.crisis_level.toUpperCase()} crisis
+            </p>
+            <p className="text-sm text-orange-100">{advisorMsg.advice}</p>
+          </div>
+          <button
+            onClick={() => setAdvisorMsg(null)}
+            className="text-orange-400 hover:text-orange-200 text-xs shrink-0"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* City Manager proposal */}
+      {proposal && (
+        <div className="border border-blue-500 bg-blue-950 rounded-lg px-4 py-3 flex justify-between items-start gap-3">
+          <div>
+            <p className="text-xs font-bold text-blue-300 mb-1">City Manager Proposal</p>
+            <p className="text-sm text-blue-100">
+              <span className="font-semibold">{proposal.policy_type}</span>
+              {proposal.reason && <span className="text-blue-300"> — {proposal.reason}</span>}
+            </p>
+            <p className="text-xs text-blue-400 mt-0.5">
+              {JSON.stringify(proposal.parameters)}
+            </p>
+          </div>
+          <button
+            onClick={() => setProposal(null)}
+            className="text-blue-400 hover:text-blue-200 text-xs shrink-0"
+          >
+            ✕
+          </button>
         </div>
       )}
 
