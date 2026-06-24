@@ -30,8 +30,16 @@ export interface TickData {
 
 export interface SimStatus {
   is_running: boolean
+  replay_mode: boolean
   simulation_day: number
   city_fund: number
   service_quality: number
   tax_rate: number
+}
+
+export interface DailySnapshot {
+  simulation_day: number
+  avg_happiness: number
+  city_fund: number
+  service_quality: number
 }

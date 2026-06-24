@@ -1,4 +1,4 @@
-import type { SimStatus } from "./types"
+import type { SimStatus, DailySnapshot } from "./types"
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api"
 
@@ -17,6 +17,13 @@ export async function fetchStatus(): Promise<SimStatus> {
   return res.json()
 }
 
+export async function fetchSnapshots(): Promise<DailySnapshot[]> {
+  const res = await fetch(`${BASE}/simulation/snapshots`)
+  return res.json()
+}
+
 export const startSim = () => post("/simulation/start")
 export const stopSim = () => post("/simulation/stop")
 export const stepSim = () => post("/simulation/step")
+export const startReplay = (from_day: number) => post("/simulation/replay", { from_day })
+export const stopReplay = () => post("/simulation/replay/stop")
