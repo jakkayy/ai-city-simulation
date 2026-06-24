@@ -3,7 +3,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import citizens, policies, gateway_status, simulation
+from app.api import citizens, policies, gateway_status, simulation, agents
 from app.db.database import engine, Base
 from app.simulation.gateway import build_gateway, llm_gateway as _gw_placeholder
 from app.simulation.loop import restore_from_snapshot, run_tick, set_socket_server
@@ -26,6 +26,7 @@ app.include_router(citizens.router, prefix="/api")
 app.include_router(policies.router, prefix="/api")
 app.include_router(gateway_status.router, prefix="/api")
 app.include_router(simulation.router, prefix="/api")
+app.include_router(agents.router, prefix="/api")
 
 _scheduler = AsyncIOScheduler()
 

@@ -15,6 +15,7 @@ from app.simulation.state import CityState, city_state, _pending_updates, queue_
 from app.simulation.zones import apply_migration_tick, get_zone_populations
 import app.simulation.gateway as _gateway_module
 from app.simulation.citizen_ai import run_citizen_ai_tick
+from app.simulation.agents import city_manager, policy_advisor
 
 logger = logging.getLogger(__name__)
 
@@ -136,8 +137,30 @@ async def _do_tick(db: AsyncSession) -> None:
         }
         await run_citizen_ai_tick(citizens, ctx, _gateway_module.llm_gateway)
 
-    # step 9 — check crisis level and broadcast
+    # step 9 — City Manager (every 7 days) and Policy Advisor (on crisis)
     crisis = _check_crisis(avg_happiness)
+    agent_ctx = {
+        "day": city_state.simulation_day,
+        "avg_happiness": avg_happiness,
+        "city_fund": city_state.city_fund,
+        "service_quality": city_state.service_quality,
+        "tax_rate": city_state.tax_rate,
+        "zone_a": pops[Zone.A],
+        "zone_b": pops[Zone.B],
+        "zone_c": pops[Zone.C],
+        "recent_policy": city_state.recent_policy,
+    }
+
+    if city_manager.should_run(city_state.simulation_day):
+        proposal = await city_manager.run(agent_ctx, _gateway_module.llm_gateway)
+        if proposal:
+            await _emit("city_manager_proposal", proposal)
+
+    if crisis in ("critical", "collapse"):
+        advice = await policy_advisor.advise(crisis, agent_ctx, _gateway_module.llm_gateway)
+        await _emit("advisor_message", {"crisis_level": crisis, "advice": advice})
+
+    # step 10 — broadcast tick
     await _emit("tick", {
         "day": city_state.simulation_day,
         "avg_happiness": round(avg_happiness, 2),
