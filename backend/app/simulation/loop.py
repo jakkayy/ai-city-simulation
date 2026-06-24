@@ -11,16 +11,15 @@ from app.models.event import Event
 from app.models.snapshot import DailySnapshot
 from app.simulation.constants import CRISIS_THRESHOLDS, ZONE_HAPPINESS_MODIFIER
 from app.simulation.economy import apply_economy_tick
-from app.simulation.state import CityState, city_state
+from app.simulation.state import CityState, city_state, _pending_updates, queue_llm_update
 from app.simulation.zones import apply_migration_tick, get_zone_populations
+import app.simulation.gateway as _gateway_module
+from app.simulation.citizen_ai import run_citizen_ai_tick
 
 logger = logging.getLogger(__name__)
 
 _tick_lock = asyncio.Lock()
 _policy_lock = asyncio.Lock()
-
-# LLM results buffered here; applied at the start of the next tick
-_pending_updates: dict[str, dict] = {}
 
 # injected by main.py so the loop can emit socket events
 _sio = None
@@ -32,13 +31,6 @@ _EPOCH = date(2026, 1, 1)
 def set_socket_server(sio) -> None:
     global _sio
     _sio = sio
-
-
-def queue_llm_update(citizen_id: str, updates: dict) -> None:
-    """Called by the LLM engine with narrative/happiness results.
-    Updates are buffered and applied at the start of the next tick to
-    avoid mid-tick race conditions."""
-    _pending_updates.setdefault(citizen_id, {}).update(updates)
 
 
 async def _emit(event: str, data: dict) -> None:
@@ -67,9 +59,10 @@ async def _do_tick(db: AsyncSession) -> None:
     global _pending_updates
 
     # step 1 — apply buffered LLM updates from the previous tick
-    if _pending_updates:
-        pending_copy = _pending_updates
-        _pending_updates = {}
+    import app.simulation.state as _state_module
+    if _state_module._pending_updates:
+        pending_copy = _state_module._pending_updates
+        _state_module._pending_updates = {}
         result = await db.execute(select(Citizen))
         for citizen in result.scalars():
             updates = pending_copy.get(str(citizen.id))
@@ -131,7 +124,19 @@ async def _do_tick(db: AsyncSession) -> None:
     city_state.simulation_day += 1
     await db.commit()
 
-    # step 8 — check crisis level and broadcast
+    # step 8 — fire citizen AI (non-blocking; results applied next tick)
+    if not city_state.replay_mode and _gateway_module.llm_gateway._keys:
+        ctx = {
+            "day": city_state.simulation_day,
+            "avg_happiness": avg_happiness,
+            "city_fund": city_state.city_fund,
+            "service_quality": city_state.service_quality,
+            "tax_rate": city_state.tax_rate,
+            "recent_policy": "",
+        }
+        await run_citizen_ai_tick(citizens, ctx, _gateway_module.llm_gateway)
+
+    # step 9 — check crisis level and broadcast
     crisis = _check_crisis(avg_happiness)
     await _emit("tick", {
         "day": city_state.simulation_day,

@@ -16,3 +16,11 @@ class CityState:
 
 # singleton — shared across the app process
 city_state = CityState()
+
+# LLM results buffered here; applied at the start of the next tick
+_pending_updates: dict[str, dict] = {}
+
+
+def queue_llm_update(citizen_id: str, updates: dict) -> None:
+    """Called by the LLM engine. Applied at the start of the next tick."""
+    _pending_updates.setdefault(citizen_id, {}).update(updates)
