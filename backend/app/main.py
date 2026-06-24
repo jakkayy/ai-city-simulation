@@ -5,7 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import citizens, policies, gateway_status, simulation
 from app.db.database import engine, Base
+from app.simulation.gateway import build_gateway, llm_gateway as _gw_placeholder
 from app.simulation.loop import restore_from_snapshot, run_tick, set_socket_server
+import app.simulation.gateway as _gateway_module
+from app.core.config import settings
 
 app = FastAPI(title="AI City Simulation API")
 
@@ -31,6 +34,11 @@ _scheduler = AsyncIOScheduler()
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # initialise LLM gateway with configured API keys
+    gateway = build_gateway(settings.groq_api_keys)
+    _gateway_module.llm_gateway = gateway
+    gateway.start()
 
     set_socket_server(sio)
     await restore_from_snapshot()
