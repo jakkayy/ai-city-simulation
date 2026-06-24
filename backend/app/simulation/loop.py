@@ -132,7 +132,7 @@ async def _do_tick(db: AsyncSession) -> None:
             "city_fund": city_state.city_fund,
             "service_quality": city_state.service_quality,
             "tax_rate": city_state.tax_rate,
-            "recent_policy": "",
+            "recent_policy": city_state.recent_policy,
         }
         await run_citizen_ai_tick(citizens, ctx, _gateway_module.llm_gateway)
 

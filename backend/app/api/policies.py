@@ -10,6 +10,7 @@ from app.simulation.policy_engine import (
     sanitize_policy,
     predict_effects,
     apply_policy_to_city,
+    apply_citizen_reactions_to_policy,
     PolicyValidationError,
 )
 from app.simulation.state import city_state
@@ -63,6 +64,22 @@ async def enact_policy(
             narrative=body.narrative,
         )
         db.add(policy)
+        await db.flush()  # get policy.id before citizen reactions
+
+        # apply immediate citizen happiness reactions
+        citizen_events = await apply_citizen_reactions_to_policy(
+            policy.id, body.policy_type, db
+        )
+        actual["citizens_affected"] = len(citizen_events)
+        actual["avg_happiness_delta"] = (
+            round(
+                sum(e["happiness_delta"] for e in citizen_events) / len(citizen_events),
+                2,
+            )
+            if citizen_events else 0
+        )
+        policy.actual_effects = actual
+
         await db.commit()
         await db.refresh(policy)
 

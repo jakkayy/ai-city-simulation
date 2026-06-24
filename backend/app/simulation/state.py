@@ -9,6 +9,7 @@ class CityState:
     service_quality: float = DEFAULT_SERVICE_QUALITY
     tax_rate: float = DEFAULT_TAX_RATE
     active_policy_ids: list[str] = field(default_factory=list)
+    recent_policy: str = ""        # policy_type of last enacted policy
     is_running: bool = False
     seed: int | None = None
     replay_mode: bool = False

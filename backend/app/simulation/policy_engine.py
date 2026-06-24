@@ -2,8 +2,13 @@
 Policy engine — sanitisation, effect prediction, and application.
 """
 
-from app.simulation.constants import TAX_CAP, DEFAULT_TAX_RATE
+import uuid
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from app.simulation.constants import TAX_CAP
 from app.simulation.state import city_state
+from app.simulation.fallback import get_reaction
 
 # valid policy types and the parameters each one accepts
 _POLICY_SCHEMA: dict[str, set[str]] = {
@@ -123,4 +128,46 @@ def apply_policy_to_city(policy_type: str, parameters: dict) -> dict:
         city_state.city_fund -= cost
         applied["city_fund"] = city_state.city_fund
 
+    city_state.recent_policy = policy_type
     return applied
+
+
+async def apply_citizen_reactions_to_policy(
+    policy_id: uuid.UUID,
+    policy_type: str,
+    db: AsyncSession,
+) -> list[dict]:
+    """
+    Apply rule-based happiness reactions to all citizens for a new policy.
+    Persists one Event per affected citizen. Returns list of event dicts.
+    """
+    from app.models.citizen import Citizen
+    from app.models.event import Event
+
+    result = await db.execute(select(Citizen))
+    citizens = list(result.scalars().all())
+
+    events: list[dict] = []
+    for citizen in citizens:
+        reaction = get_reaction(citizen, policy_type)
+        delta = reaction["happiness_delta"]
+
+        citizen.happiness = max(0.0, min(100.0, citizen.happiness + delta))
+        citizen.last_action = reaction["reaction"][:50]
+
+        if delta != 0:
+            db.add(Event(
+                simulation_day=city_state.simulation_day,
+                citizen_id=citizen.id,
+                policy_id=policy_id,
+                event_type="policy_reaction",
+                narrative=f"{citizen.name} {reaction['reaction']}.",
+                happiness_delta=float(delta),
+            ))
+            events.append({
+                "citizen_id": str(citizen.id),
+                "happiness_delta": delta,
+                "narrative": f"{citizen.name} {reaction['reaction']}.",
+            })
+
+    return events
