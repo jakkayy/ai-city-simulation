@@ -1,9 +1,11 @@
 import socketio
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import citizens, policies, gateway_status
+from app.api import citizens, policies, gateway_status, simulation
 from app.db.database import engine, Base
+from app.simulation.loop import restore_from_snapshot, run_tick, set_socket_server
 
 app = FastAPI(title="AI City Simulation API")
 
@@ -20,12 +22,26 @@ socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
 app.include_router(citizens.router, prefix="/api")
 app.include_router(policies.router, prefix="/api")
 app.include_router(gateway_status.router, prefix="/api")
+app.include_router(simulation.router, prefix="/api")
+
+_scheduler = AsyncIOScheduler()
 
 
 @app.on_event("startup")
 async def startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    set_socket_server(sio)
+    await restore_from_snapshot()
+
+    _scheduler.add_job(run_tick, "interval", seconds=10, id="tick", max_instances=1)
+    _scheduler.start()
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    _scheduler.shutdown(wait=False)
 
 
 @app.get("/api/health")
