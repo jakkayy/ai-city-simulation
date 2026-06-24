@@ -15,6 +15,7 @@ from app.simulation.state import CityState, city_state, _pending_updates, queue_
 from app.simulation.zones import apply_migration_tick, get_zone_populations
 import app.simulation.gateway as _gateway_module
 from app.simulation.citizen_ai import run_citizen_ai_tick
+from app.simulation.fallback import apply_fallback_tick
 from app.simulation.agents import city_manager, policy_advisor
 
 logger = logging.getLogger(__name__)
@@ -125,8 +126,19 @@ async def _do_tick(db: AsyncSession) -> None:
     city_state.simulation_day += 1
     await db.commit()
 
-    # step 8 — fire citizen AI (non-blocking; results applied next tick)
-    if not city_state.replay_mode and _gateway_module.llm_gateway._keys:
+    # step 8 — citizen reactions: LLM in normal mode, fallback in replay mode
+    if city_state.replay_mode:
+        fallback_events = apply_fallback_tick(citizens, city_state.recent_policy)
+        for ev in fallback_events:
+            db.add(Event(
+                simulation_day=city_state.simulation_day,
+                citizen_id=ev.get("citizen_id"),
+                event_type=ev["event_type"],
+                narrative=ev["narrative"],
+                happiness_delta=ev.get("happiness_delta", 0.0),
+            ))
+        await db.commit()
+    elif _gateway_module.llm_gateway._keys:
         ctx = {
             "day": city_state.simulation_day,
             "avg_happiness": avg_happiness,
