@@ -16,6 +16,11 @@ class Settings(BaseSettings):
 
     ENV: str = "development"
     LOG_LEVEL: str = "debug"
+    CORS_ORIGINS: str = "http://localhost:3000"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
     @property
     def groq_api_keys(self) -> list[str]:
