@@ -1,0 +1,39 @@
+# Docs (local only)
+DEVELOPMENT.md
+
+# Environment files — ห้าม commit เด็ดขาด
+.env.development
+.env.production
+.env.local
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+dist/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+.next/
+out/
+frontend/node_modules/
+frontend/.next/
+
+# Docker
+postgres_dev_data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp

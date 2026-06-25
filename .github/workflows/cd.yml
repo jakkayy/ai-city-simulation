@@ -1,0 +1,43 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd /home/ubuntu/ai-city-simulation
+
+            git pull origin main
+
+            # inject production env from GitHub Secrets (written once on EC2 setup)
+            # .env.production is kept only on EC2, never in the repo
+
+            docker compose up -d --build --remove-orphans
+
+            # wait for backend health check
+            for i in $(seq 1 15); do
+              if curl -sf http://localhost:8000/api/health; then
+                echo "Backend healthy"
+                break
+              fi
+              echo "Waiting... ($i)"
+              sleep 5
+            done
+
+            docker compose ps

@@ -1,48 +1,94 @@
+"""Seed 50 citizens with balanced zone distribution and a sparse friend graph."""
+
 import asyncio
+import random
 import uuid
+
+from sqlalchemy import delete
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.db.database import AsyncSessionLocal
 from app.models.citizen import Citizen, JobType, Zone, Personality
 
-CITIZENS = [
-    # Zone A — นักธุรกิจ / มืออาชีพ
-    {"name": "ธนกร วิริยะ",    "age": 45, "job_type": JobType.business_owner, "zone": Zone.A, "happiness": 72.0, "savings": 50000.0, "personality": Personality.rational},
-    {"name": "นภา สิริมงคล",   "age": 38, "job_type": JobType.professional,   "zone": Zone.A, "happiness": 68.0, "savings": 30000.0, "personality": Personality.optimistic},
-    # Zone B — ครู / พนักงานบริการ / แรงงาน
-    {"name": "มาลี รักดี",     "age": 34, "job_type": JobType.teacher,        "zone": Zone.B, "happiness": 60.0, "savings": 10000.0, "personality": Personality.optimistic},
-    {"name": "วิชัย แก้วใส",   "age": 29, "job_type": JobType.service_worker, "zone": Zone.B, "happiness": 52.0, "savings": 5000.0,  "personality": Personality.impulsive},
-    {"name": "สุภา เจริญสุข",  "age": 41, "job_type": JobType.teacher,        "zone": Zone.B, "happiness": 65.0, "savings": 12000.0, "personality": Personality.rational},
-    {"name": "อรุณ ตั้งมั่น",  "age": 36, "job_type": JobType.laborer,        "zone": Zone.B, "happiness": 48.0, "savings": 3000.0,  "personality": Personality.pessimistic},
-    # Zone C — ชาวนา / แรงงาน / ว่างงาน
-    {"name": "สมชาย นาดี",     "age": 52, "job_type": JobType.farmer,         "zone": Zone.C, "happiness": 42.0, "savings": 2000.0,  "personality": Personality.pessimistic},
-    {"name": "แก้ว พลอยงาม",   "age": 27, "job_type": JobType.laborer,        "zone": Zone.C, "happiness": 38.0, "savings": 1500.0,  "personality": Personality.impulsive},
-    {"name": "ประสงค์ ใจดี",   "age": 60, "job_type": JobType.farmer,         "zone": Zone.C, "happiness": 45.0, "savings": 800.0,   "personality": Personality.rational},
-    {"name": "ปิยะ ว่างแสน",   "age": 23, "job_type": JobType.unemployed,     "zone": Zone.C, "happiness": 25.0, "savings": 500.0,   "personality": Personality.pessimistic},
+random.seed(42)
+
+_NAMES = [
+    "Alice","Bob","Carol","David","Eva","Frank","Grace","Henry","Iris","Jack",
+    "Karen","Leo","Maya","Nick","Olivia","Paul","Quinn","Rosa","Sam","Tara",
+    "Uma","Victor","Wendy","Xavier","Yara","Zach","Anya","Ben","Cleo","Dan",
+    "Ella","Felix","Gina","Hugo","Isla","Joel","Kira","Liam","Mia","Noah",
+    "Ora","Pete","Rita","Sean","Tina","Uri","Vera","Will","Xena","Yuki",
 ]
 
-friend_map = {
-    0: [1], 1: [0],
-    2: [3, 5], 3: [2, 6], 4: [5], 5: [2, 4],
-    6: [3, 8], 7: [9], 8: [6], 9: [7],
+_ZONE_DIST = [Zone.A]*12 + [Zone.B]*20 + [Zone.C]*18  # 50 total
+
+_JOB_DIST = (
+    [JobType.business_owner]*5 + [JobType.professional]*8 +
+    [JobType.teacher]*7 + [JobType.service_worker]*10 +
+    [JobType.laborer]*10 + [JobType.farmer]*5 + [JobType.unemployed]*5
+)
+
+_SAVINGS_RANGE = {
+    JobType.business_owner: (10_000, 50_000),
+    JobType.professional:   (3_000,  15_000),
+    JobType.teacher:        (1_000,   5_000),
+    JobType.service_worker: (500,     3_000),
+    JobType.laborer:        (200,     2_000),
+    JobType.farmer:         (300,     2_500),
+    JobType.unemployed:     (-500,      500),
 }
 
+_PERSONALITIES = list(Personality)
 
-async def seed():
+
+def _friend_ids(ids: list[uuid.UUID], index: int, n: int = 3) -> str:
+    candidates = [i for i in range(len(ids)) if i != index]
+    return ",".join(str(ids[i]) for i in random.sample(candidates, min(n, len(candidates))))
+
+
+async def seed_citizens(db: AsyncSession) -> None:
+    """Idempotent: clears and re-seeds citizens."""
+    await db.execute(delete(Citizen))
+    await db.flush()
+
+    zones = _ZONE_DIST.copy()
+    jobs = _JOB_DIST.copy()
+    random.shuffle(zones)
+    random.shuffle(jobs)
+
+    ids = [uuid.uuid4() for _ in range(50)]
+    citizens = []
+
+    for i, name in enumerate(_NAMES):
+        zone = zones[i]
+        job = jobs[i]
+        lo, hi = _SAVINGS_RANGE[job]
+        citizens.append(Citizen(
+            id=ids[i],
+            name=name,
+            age=random.randint(18, 65),
+            job_type=job,
+            zone=zone,
+            happiness=round(random.uniform(45, 75), 1),
+            savings=round(random.uniform(lo, hi), 2),
+            personality=random.choice(_PERSONALITIES),
+            memory_summary="",
+            days_unhappy=0,
+            zone_locked_until=None,
+            last_action="arrived",
+            pending_reaction=False,
+            friend_ids=_friend_ids(ids, i),
+        ))
+
+    db.add_all(citizens)
+    await db.commit()
+    print(f"Seeded {len(citizens)} citizens")
+
+
+async def _main() -> None:
     async with AsyncSessionLocal() as db:
-        from sqlalchemy import delete
-        await db.execute(delete(Citizen))
-        await db.commit()
-
-        citizen_ids = [uuid.uuid4() for _ in CITIZENS]
-        citizens = []
-        for i, data in enumerate(CITIZENS):
-            friends = ",".join(str(citizen_ids[j]) for j in friend_map.get(i, []))
-            c = Citizen(id=citizen_ids[i], friend_ids=friends, **data)
-            citizens.append(c)
-
-        db.add_all(citizens)
-        await db.commit()
-        print(f"✅ Seeded {len(citizens)} citizens")
+        await seed_citizens(db)
 
 
 if __name__ == "__main__":
-    asyncio.run(seed())
+    asyncio.run(_main())
