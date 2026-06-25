@@ -38,6 +38,10 @@ app.include_router(agents.router, prefix="/api")
 _scheduler = AsyncIOScheduler()
 
 
+def get_scheduler() -> AsyncIOScheduler:
+    return _scheduler
+
+
 @app.on_event("startup")
 async def startup():
     async with engine.begin() as conn:

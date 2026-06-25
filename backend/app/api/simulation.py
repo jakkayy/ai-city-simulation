@@ -26,6 +26,12 @@ async def start_simulation(body: StartRequest):
         raise HTTPException(status_code=409, detail="Simulation already running")
     city_state.is_running = True
     city_state.replay_mode = False
+
+    from app.main import get_scheduler
+    job = get_scheduler().get_job("tick")
+    if job:
+        job.reschedule(trigger="interval", seconds=body.tick_interval_seconds)
+
     return {"status": "started", "tick_interval_seconds": body.tick_interval_seconds}
 
 
