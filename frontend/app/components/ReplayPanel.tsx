@@ -31,7 +31,10 @@ export default function ReplayPanel({ isRunning, replayMode, onReplayStart, onRe
   }, [selectedDay])
 
   useEffect(() => {
-    if (open) loadSnapshots()
+    if (!open) return
+    queueMicrotask(() => {
+      void loadSnapshots()
+    })
   }, [open, loadSnapshots])
 
   const handleStart = async () => {
@@ -62,13 +65,13 @@ export default function ReplayPanel({ isRunning, replayMode, onReplayStart, onRe
   if (replayMode) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-xs bg-purple-800 text-purple-200 px-2 py-1 rounded font-semibold">
+        <span className="rounded-full border border-violet-300/30 bg-violet-400/15 px-2 py-1 text-xs font-semibold text-violet-100">
           REPLAY
         </span>
         <button
           onClick={handleStop}
           disabled={loading}
-          className="px-3 py-1.5 text-sm bg-purple-700 hover:bg-purple-600 rounded transition disabled:opacity-50"
+          className="focus-ring rounded-lg bg-violet-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:opacity-50"
         >
           Stop Replay
         </button>
@@ -81,21 +84,21 @@ export default function ReplayPanel({ isRunning, replayMode, onReplayStart, onRe
       <button
         onClick={() => setOpen((o) => !o)}
         disabled={isRunning}
-        className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition disabled:opacity-40"
+        className="focus-ring rounded-lg border border-slate-600/70 bg-slate-800/80 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-700 disabled:opacity-40"
         title={isRunning ? "Stop simulation before replaying" : "Replay from a past day"}
       >
         Replay
       </button>
 
       {open && (
-        <div className="absolute right-0 top-9 z-20 w-72 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-3 flex flex-col gap-2">
-          <p className="text-xs text-gray-400 font-semibold">Replay from saved day</p>
+        <div className="glass-panel absolute right-0 top-11 z-20 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-xl p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-violet-200">Replay from saved day</p>
 
           {snapshots.length === 0 ? (
-            <p className="text-xs text-gray-500">No snapshots yet — run the simulation first.</p>
+            <p className="text-xs text-slate-500">No snapshots yet, run the simulation first.</p>
           ) : (
             <select
-              className="bg-gray-700 text-white text-sm rounded p-1.5 border border-gray-600"
+              className="focus-ring rounded-lg border border-slate-600 bg-slate-950/70 p-2 text-sm text-white"
               value={selectedDay ?? ""}
               onChange={(e) => setSelectedDay(Number(e.target.value))}
             >
@@ -107,19 +110,19 @@ export default function ReplayPanel({ isRunning, replayMode, onReplayStart, onRe
             </select>
           )}
 
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-rose-300">{error}</p>}
 
           <div className="flex gap-2">
             <button
               onClick={handleStart}
               disabled={loading || snapshots.length === 0}
-              className="flex-1 px-3 py-1.5 text-sm bg-purple-700 hover:bg-purple-600 rounded transition disabled:opacity-50"
+              className="focus-ring flex-1 rounded-lg bg-violet-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:opacity-50"
             >
               {loading ? "Starting…" : "Start Replay"}
             </button>
             <button
               onClick={() => setOpen(false)}
-              className="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-500 rounded transition"
+              className="focus-ring rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700"
             >
               Cancel
             </button>

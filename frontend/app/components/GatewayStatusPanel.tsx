@@ -25,56 +25,56 @@ export default function GatewayStatusPanel() {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition flex items-center gap-1.5"
+        className="focus-ring flex items-center gap-1.5 rounded-lg border border-slate-600/70 bg-slate-800/80 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-700"
         title="LLM Gateway Status"
       >
-        <span className={`w-2 h-2 rounded-full ${hasKeys ? "bg-green-400" : "bg-gray-500"}`} />
+        <span className={`h-2 w-2 rounded-full ${hasKeys ? "bg-emerald-300" : "bg-slate-500"}`} />
         LLM
       </button>
 
       {open && (
-        <div className="absolute right-0 top-9 z-20 w-72 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-3 flex flex-col gap-3">
+        <div className="glass-panel absolute right-0 top-11 z-20 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-xl p-4">
           <div className="flex justify-between items-center">
-            <p className="text-xs font-semibold text-gray-400">LLM Gateway Status</p>
-            <button onClick={refresh} className="text-xs text-gray-500 hover:text-gray-300">↻ refresh</button>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-300">LLM Gateway Status</p>
+            <button onClick={refresh} className="focus-ring rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-700/60 hover:text-slate-200">refresh</button>
           </div>
 
           {status ? (
             <>
               <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="bg-gray-700 rounded p-2">
-                  <div className="text-xs text-gray-400">Queue</div>
+                <div className="rounded-lg border border-slate-700/70 bg-slate-950/50 p-2">
+                  <div className="text-xs text-slate-400">Queue</div>
                   <div className="text-sm font-bold text-white">{status.queue_depth}</div>
                 </div>
-                <div className="bg-gray-700 rounded p-2">
-                  <div className="text-xs text-gray-400">Total Calls</div>
+                <div className="rounded-lg border border-slate-700/70 bg-slate-950/50 p-2">
+                  <div className="text-xs text-slate-400">Total Calls</div>
                   <div className="text-sm font-bold text-white">{status.total_calls}</div>
                 </div>
-                <div className="bg-gray-700 rounded p-2">
-                  <div className="text-xs text-gray-400">Fallbacks</div>
-                  <div className="text-sm font-bold text-yellow-400">{status.total_fallbacks}</div>
+                <div className="rounded-lg border border-slate-700/70 bg-slate-950/50 p-2">
+                  <div className="text-xs text-slate-400">Fallbacks</div>
+                  <div className="text-sm font-bold text-amber-300">{status.total_fallbacks}</div>
                 </div>
               </div>
 
               {status.keys.length === 0 ? (
-                <p className="text-xs text-gray-500 text-center">No API keys configured</p>
+                <p className="text-center text-xs text-slate-500">No API keys configured</p>
               ) : (
                 <div className="flex flex-col gap-2">
                   {status.keys.map((k) => (
-                    <div key={k.alias} className="bg-gray-700 rounded p-2">
+                    <div key={k.alias} className="rounded-lg border border-slate-700/70 bg-slate-950/50 p-2">
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-xs font-semibold text-white">{k.alias}</span>
-                        <span className={`text-xs font-bold ${k.available ? "text-green-400" : "text-red-400"}`}>
+                        <span className={`text-xs font-bold ${k.available ? "text-emerald-300" : "text-rose-300"}`}>
                           {k.available ? "● ready" : "○ busy"}
                         </span>
                       </div>
-                      <div className="w-full bg-gray-600 rounded-full h-1.5 mb-1">
+                      <div className="mb-1 h-1.5 w-full rounded-full bg-slate-700">
                         <div
-                          className="bg-indigo-400 h-1.5 rounded-full transition-all"
+                          className="h-1.5 rounded-full bg-cyan-300 transition-all"
                           style={{ width: `${(k.requests_today / 3000) * 100}%` }}
                         />
                       </div>
-                      <div className="flex justify-between text-xs text-gray-400">
+                      <div className="flex justify-between text-xs text-slate-400">
                         <span>{k.requests_today} req today</span>
                         <span>{k.budget_remaining} left</span>
                       </div>
@@ -84,7 +84,7 @@ export default function GatewayStatusPanel() {
               )}
             </>
           ) : (
-            <p className="text-xs text-gray-500 text-center">Loading…</p>
+            <p className="text-center text-xs text-slate-500">Loading...</p>
           )}
         </div>
       )}

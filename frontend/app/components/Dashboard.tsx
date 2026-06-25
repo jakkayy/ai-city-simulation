@@ -91,166 +91,198 @@ export default function Dashboard() {
   const replayMode = status?.replay_mode ?? false
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">AI City Simulation</h1>
-          <p className="text-xs text-gray-400">
-            Day {day} &nbsp;•&nbsp;
-            <span className={connected ? "text-green-400" : "text-red-400"}>
-              {connected ? "● live" : "○ disconnected"}
-            </span>
-            {replayMode && (
-              <span className="ml-2 text-purple-400 font-semibold">• replay</span>
-            )}
-          </p>
-        </div>
-
-        {/* Controls */}
-        <div className="flex gap-2 items-center">
-          <GatewayStatusPanel />
-          {!replayMode && <PolicyPanel onEnacted={() => fetchStatus().then(setStatus).catch(console.error)} />}
-          <ReplayPanel
-            isRunning={isRunning}
-            replayMode={replayMode}
-            onReplayStart={() => setStatus((s) => s ? { ...s, is_running: true, replay_mode: true } : s)}
-            onReplayStop={() => setStatus((s) => s ? { ...s, is_running: false, replay_mode: false } : s)}
-          />
-          {!replayMode && (
-            <>
-              <button
-                onClick={handleStep}
-                disabled={isRunning}
-                className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded transition disabled:opacity-40"
-              >
-                Step
-              </button>
-              {isRunning ? (
-                <button
-                  onClick={handleStop}
-                  className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 rounded transition"
-                >
-                  Stop
-                </button>
-              ) : (
-                <button
-                  onClick={handleStart}
-                  className="px-3 py-1.5 text-sm bg-green-700 hover:bg-green-600 rounded transition"
-                >
-                  Start
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Crisis banner */}
-      {crisis && (
-        <div className={`border rounded-lg px-4 py-2 text-sm font-semibold ${CRISIS_STYLE[crisis]}`}>
-          ⚠ City Crisis: {crisis.toUpperCase()} — avg happiness {avgHappiness.toFixed(1)}
-        </div>
-      )}
-
-      {/* Policy Advisor alert */}
-      {advisorMsg && (
-        <div className="border border-orange-500 bg-orange-950 rounded-lg px-4 py-3 flex justify-between items-start gap-3">
-          <div>
-            <p className="text-xs font-bold text-orange-300 mb-1">
-              Policy Advisor — {advisorMsg.crisis_level.toUpperCase()} crisis
-            </p>
-            <p className="text-sm text-orange-100">{advisorMsg.advice}</p>
-          </div>
-          <button
-            onClick={() => setAdvisorMsg(null)}
-            className="text-orange-400 hover:text-orange-200 text-xs shrink-0"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* City Manager proposal */}
-      {proposal && (
-        <div className="border border-blue-500 bg-blue-950 rounded-lg px-4 py-3 flex justify-between items-start gap-3">
-          <div>
-            <p className="text-xs font-bold text-blue-300 mb-1">City Manager Proposal</p>
-            <p className="text-sm text-blue-100">
-              <span className="font-semibold">{proposal.policy_type}</span>
-              {proposal.reason && <span className="text-blue-300"> — {proposal.reason}</span>}
-            </p>
-            <p className="text-xs text-blue-400 mt-0.5">
-              {JSON.stringify(proposal.parameters)}
-            </p>
-          </div>
-          <button
-            onClick={() => setProposal(null)}
-            className="text-blue-400 hover:text-blue-200 text-xs shrink-0"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* City stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Avg Happiness" value={avgHappiness.toFixed(1)} unit="/100" color={avgHappiness >= 50 ? "text-green-400" : "text-red-400"} />
-        <StatCard label="City Fund" value={`$${cityFund.toLocaleString("en-US", { maximumFractionDigits: 0 })}`} color={cityFund >= 0 ? "text-emerald-400" : "text-red-400"} />
-        <StatCard label="Service Quality" value={serviceQuality.toFixed(1)} unit="/100" color="text-blue-400" />
-        <StatCard label="Tax Rate" value={`${(taxRate * 100).toFixed(0)}%`} color="text-yellow-400" />
-      </div>
-
-      {/* Zone populations */}
-      <div className="flex gap-3">
-        {(["A", "B", "C"] as const).map((z) => (
-          <div key={z} className="flex-1 bg-gray-800 rounded-lg p-2 text-center">
-            <div className="text-xs text-gray-400">Zone {z}</div>
-            <div className="text-lg font-bold">{pops[z]}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* City Map */}
-      {citizens.length > 0 && (
-        <CityMap citizens={citizens} zonePops={pops} />
-      )}
-
-      {/* Citizens grid + event log */}
-      <div className="flex gap-4 flex-1">
-        <div className="flex-1">
-          <h2 className="text-sm font-semibold text-gray-400 mb-2">Citizens ({citizens.length})</h2>
-          {citizens.length === 0 ? (
-            <p className="text-gray-600 text-sm">Waiting for first tick…</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-              {citizens.map((c) => (
-                <CitizenCard key={c.id} citizen={c} />
-              ))}
+    <main className="app-shell min-h-screen text-slate-100">
+      <div className="mx-auto flex w-full max-w-[1800px] flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="glass-panel relative z-50 overflow-visible rounded-2xl px-4 py-4 sm:px-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-bold tracking-tight text-white">AI City Simulation</h1>
+                <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2 py-0.5 text-xs font-semibold text-cyan-100">
+                  Day {day}
+                </span>
+              </div>
+              <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                <span className={connected ? "text-emerald-300" : "text-rose-300"}>
+                  {connected ? "● live city feed" : "○ disconnected"}
+                </span>
+                <span className="text-slate-600">/</span>
+                <span>{citizens.length} citizens tracked</span>
+                {replayMode && (
+                  <>
+                    <span className="text-slate-600">/</span>
+                    <span className="font-semibold text-violet-300">replay mode</span>
+                  </>
+                )}
+              </p>
             </div>
-          )}
+
+            {/* Controls */}
+            <div className="flex flex-wrap items-center gap-2">
+              <GatewayStatusPanel />
+              {!replayMode && <PolicyPanel onEnacted={() => fetchStatus().then(setStatus).catch(console.error)} />}
+              <ReplayPanel
+                isRunning={isRunning}
+                replayMode={replayMode}
+                onReplayStart={() => setStatus((s) => s ? { ...s, is_running: true, replay_mode: true } : s)}
+                onReplayStop={() => setStatus((s) => s ? { ...s, is_running: false, replay_mode: false } : s)}
+              />
+              {!replayMode && (
+                <>
+                  <button
+                    onClick={handleStep}
+                    disabled={isRunning}
+                    className="focus-ring rounded-lg border border-slate-600/70 bg-slate-800/80 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-700 disabled:opacity-40"
+                  >
+                    Step
+                  </button>
+                  {isRunning ? (
+                    <button
+                      onClick={handleStop}
+                      className="focus-ring rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-950/30 transition hover:bg-rose-500"
+                    >
+                      Stop
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleStart}
+                      className="focus-ring rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-950/20 transition hover:bg-emerald-400"
+                    >
+                      Start
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Event log */}
-        {recentEvents.length > 0 && (
-          <div className="w-64 shrink-0">
-            <h2 className="text-sm font-semibold text-gray-400 mb-2">Recent Events</h2>
-            <div className="flex flex-col gap-1 max-h-96 overflow-y-auto">
-              {recentEvents.map((ev, i) => (
-                <div key={i} className="bg-gray-800 rounded p-2 text-xs text-gray-300">
+        {/* Crisis banner */}
+        {crisis && (
+          <div className={`rounded-xl border px-4 py-3 text-sm font-semibold shadow-lg ${CRISIS_STYLE[crisis]}`}>
+            City Crisis: {crisis.toUpperCase()} · avg happiness {avgHappiness.toFixed(1)}
+          </div>
+        )}
+
+        {/* Policy Advisor alert */}
+        {advisorMsg && (
+          <div className="rounded-xl border border-amber-400/40 bg-amber-950/70 px-4 py-3 shadow-lg shadow-amber-950/20">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-200">
+                  Policy Advisor · {advisorMsg.crisis_level.toUpperCase()} crisis
+                </p>
+                <p className="mt-1 text-sm text-amber-50">{advisorMsg.advice}</p>
+              </div>
+              <button
+                onClick={() => setAdvisorMsg(null)}
+                className="focus-ring rounded-md px-2 text-sm text-amber-300 transition hover:bg-amber-300/10 hover:text-amber-100"
+              >
+                x
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* City Manager proposal */}
+        {proposal && (
+          <div className="rounded-xl border border-cyan-300/35 bg-cyan-950/60 px-4 py-3 shadow-lg shadow-cyan-950/20">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">City Manager Proposal</p>
+                <p className="mt-1 text-sm text-cyan-50">
+                  <span className="font-semibold">{proposal.policy_type}</span>
+                  {proposal.reason && <span className="text-cyan-200"> · {proposal.reason}</span>}
+                </p>
+                <p className="mt-1 text-xs text-cyan-300/80">
+                  {JSON.stringify(proposal.parameters)}
+                </p>
+              </div>
+              <button
+                onClick={() => setProposal(null)}
+                className="focus-ring rounded-md px-2 text-sm text-cyan-300 transition hover:bg-cyan-300/10 hover:text-cyan-100"
+              >
+                x
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* City stats */}
+        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard label="Avg Happiness" value={avgHappiness.toFixed(1)} unit="/100" color={avgHappiness >= 50 ? "text-emerald-300" : "text-rose-300"} />
+          <StatCard label="City Fund" value={`$${cityFund.toLocaleString("en-US", { maximumFractionDigits: 0 })}`} color={cityFund >= 0 ? "text-cyan-300" : "text-rose-300"} />
+          <StatCard label="Service Quality" value={serviceQuality.toFixed(1)} unit="/100" color="text-sky-300" />
+          <StatCard label="Tax Rate" value={`${(taxRate * 100).toFixed(0)}%`} color="text-amber-300" />
+        </section>
+
+        {/* Zone populations */}
+        <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {(["A", "B", "C"] as const).map((z) => (
+            <div key={z} className="soft-panel rounded-xl px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Zone {z}</div>
+                  <div className="mt-1 text-2xl font-bold text-white">{pops[z]}</div>
+                </div>
+                <div className={`h-10 w-10 rounded-xl ${z === "A" ? "bg-blue-400/20 text-blue-200" : z === "B" ? "bg-emerald-400/20 text-emerald-200" : "bg-amber-400/20 text-amber-200"} flex items-center justify-center text-sm font-bold`}>
+                  Z{z}
+                </div>
+              </div>
+            </div>
+          ))}
+        </section>
+
+        {/* City Map */}
+        {citizens.length > 0 && (
+          <CityMap citizens={citizens} zonePops={pops} />
+        )}
+
+        {/* Citizens grid + event log */}
+        <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0">
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-white">Citizens</h2>
+                <p className="text-xs text-slate-400">{citizens.length} active agents</p>
+              </div>
+            </div>
+            {citizens.length === 0 ? (
+              <div className="soft-panel rounded-xl p-6 text-sm text-slate-400">Waiting for first tick...</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+                {citizens.map((c) => (
+                  <CitizenCard key={c.id} citizen={c} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Event log */}
+          <aside className="min-w-0">
+            <div className="mb-3">
+              <h2 className="text-base font-semibold text-white">Recent Events</h2>
+              <p className="text-xs text-slate-400">{recentEvents.length} latest changes</p>
+            </div>
+            <div className="soft-panel thin-scrollbar flex max-h-[32rem] flex-col gap-2 overflow-y-auto rounded-xl p-3">
+              {recentEvents.length === 0 ? (
+                <p className="p-3 text-sm text-slate-500">No events yet.</p>
+              ) : recentEvents.map((ev, i) => (
+                <div key={i} className="rounded-lg border border-slate-700/70 bg-slate-950/40 p-3 text-xs leading-relaxed text-slate-300">
                   {ev.narrative}
                   {ev.happiness_delta !== 0 && (
-                    <span className={`ml-1 font-semibold ${ev.happiness_delta > 0 ? "text-green-400" : "text-red-400"}`}>
+                    <span className={`ml-1 font-semibold ${ev.happiness_delta > 0 ? "text-emerald-300" : "text-rose-300"}`}>
                       ({ev.happiness_delta > 0 ? "+" : ""}{ev.happiness_delta})
                     </span>
                   )}
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          </aside>
+        </section>
       </div>
-    </div>
+    </main>
   )
 }
 
@@ -266,10 +298,17 @@ function StatCard({
   color?: string
 }) {
   return (
-    <div className="bg-gray-800 rounded-lg p-3">
-      <div className="text-xs text-gray-400">{label}</div>
-      <div className={`text-lg font-bold ${color}`}>
-        {value}<span className="text-xs text-gray-500">{unit}</span>
+    <div className="soft-panel group overflow-hidden rounded-xl p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</div>
+          <div className={`mt-2 text-2xl font-bold tracking-tight ${color}`}>
+            {value}<span className="ml-1 text-xs font-semibold text-slate-500">{unit}</span>
+          </div>
+        </div>
+        <div className="h-2 w-16 rounded-full bg-slate-700/80">
+          <div className="h-2 w-10 rounded-full bg-current opacity-60" />
+        </div>
       </div>
     </div>
   )
