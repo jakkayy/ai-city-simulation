@@ -43,3 +43,38 @@ export interface DailySnapshot {
   city_fund: number
   service_quality: number
 }
+
+export interface GatewayKeyStatus {
+  alias: string
+  requests_today: number
+  tokens_today: number
+  fallback_calls: number
+  budget_remaining: number
+  available: boolean
+}
+
+export interface GatewayStatus {
+  queue_depth: number
+  total_calls: number
+  total_fallbacks: number
+  keys: GatewayKeyStatus[]
+}
+
+export type PolicyType =
+  | "tax_increase"
+  | "tax_decrease"
+  | "service_boost"
+  | "service_cut"
+  | "housing"
+  | "job_program"
+
+export interface PolicyResponse {
+  id: string
+  name: string
+  policy_type: PolicyType
+  enacted_day: number
+  parameters: Record<string, unknown>
+  predicted_effects: Record<string, unknown>
+  actual_effects: Record<string, unknown> | null
+  narrative: string
+}

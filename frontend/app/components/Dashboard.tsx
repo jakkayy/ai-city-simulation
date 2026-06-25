@@ -5,6 +5,9 @@ import { getSocket } from "../lib/socket"
 import { fetchStatus, startSim, stopSim, stepSim } from "../lib/api"
 import CitizenCard from "./CitizenCard"
 import ReplayPanel from "./ReplayPanel"
+import PolicyPanel from "./PolicyPanel"
+import GatewayStatusPanel from "./GatewayStatusPanel"
+import CityMap from "./CityMap"
 import type { TickData, SimStatus, SimEvent } from "../lib/types"
 
 const CRISIS_STYLE: Record<string, string> = {
@@ -106,6 +109,8 @@ export default function Dashboard() {
 
         {/* Controls */}
         <div className="flex gap-2 items-center">
+          <GatewayStatusPanel />
+          {!replayMode && <PolicyPanel onEnacted={() => fetchStatus().then(setStatus).catch(console.error)} />}
           <ReplayPanel
             isRunning={isRunning}
             replayMode={replayMode}
@@ -205,6 +210,11 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* City Map */}
+      {citizens.length > 0 && (
+        <CityMap citizens={citizens} zonePops={pops} />
+      )}
 
       {/* Citizens grid + event log */}
       <div className="flex gap-4 flex-1">
