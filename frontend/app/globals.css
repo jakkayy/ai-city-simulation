@@ -262,6 +262,12 @@ html[lang="th"] .th-plain {
   transition: all 0.2s var(--ease-out);
 }
 
+/* Thai glyphs are taller: give chips more room so the text is not squeezed */
+html[lang="th"] .chip {
+  height: 2.1rem;
+  padding: 0 0.9rem;
+}
+
 .chip:hover {
   color: #fff;
   border-color: rgba(148, 163, 184, 0.4);

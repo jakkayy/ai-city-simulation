@@ -359,7 +359,7 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover, serv
       className={
         fullscreen
           ? "fixed inset-0 z-[250] flex flex-col gap-3 bg-[#05070d] p-4"
-          : "panel fade-up overflow-hidden rounded-2xl p-4"
+          : "panel fade-up flex flex-col gap-3.5 overflow-hidden rounded-2xl p-4"
       }
       style={fullscreen ? undefined : { animationDelay: "300ms" }}
     >
@@ -480,7 +480,7 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover, serv
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-xs text-slate-300">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 px-1 pt-1 text-xs text-slate-300">
         {[
           { c: MOOD.happy, l: t("map.happy") },
           { c: MOOD.stable, l: t("map.stable") },
@@ -501,10 +501,10 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover, serv
         <span className="ml-auto hidden text-slate-500 md:inline">{t("map.zoomHint")}</span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 px-1" aria-label={t("map.workplaces")}>
+      <div className="flex flex-wrap items-center gap-2.5 px-1 pb-1" aria-label={t("map.workplaces")}>
         <span className="eyebrow mr-1">{t("map.workplaces")}</span>
         {workplaces.map((w) => (
-          <span key={w.label} className="chip !h-6" style={{ borderColor: `${w.c}55` }}>
+          <span key={w.label} className="chip" style={{ borderColor: `${w.c}55` }}>
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: w.c }} />
             {w.label}
             <span className="num font-bold" style={{ color: w.c }}>{w.n}</span>
