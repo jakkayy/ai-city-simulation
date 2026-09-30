@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { circularDelta, formatClock, nightAmount, phaseOf, twilightAmount } from "../dayClock"
+import { CYCLE_MIN_MS, circularDelta, cycleMs, formatClock, nightAmount, phaseOf, twilightAmount } from "../dayClock"
 
 describe("day clock", () => {
   it("is dark at night and bright at noon", () => {
@@ -53,5 +53,16 @@ describe("day clock", () => {
     expect(circularDelta(23, 1)).toBe(2)
     expect(circularDelta(1, 23)).toBe(-2)
     expect(circularDelta(10, 12)).toBe(2)
+  })
+
+  it("plays one map day per simulation day", () => {
+    expect(cycleMs(60)).toBe(60_000)
+    expect(cycleMs(120)).toBe(120_000)
+    expect(cycleMs(30)).toBe(30_000)
+  })
+
+  it("never spins faster than the floor, so Turbo does not strobe", () => {
+    expect(cycleMs(1)).toBe(CYCLE_MIN_MS)
+    expect(cycleMs(2)).toBe(CYCLE_MIN_MS)
   })
 })

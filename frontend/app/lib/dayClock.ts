@@ -46,3 +46,12 @@ export function circularDelta(from: number, to: number): number {
   if (d > 12) d -= 24
   return d
 }
+
+// One simulation day is one full 00:00 -> 24:00 cycle on the map. With the default of one
+// minute per day a morning commute takes a few seconds, slow enough to watch. The floor only
+// stops the "Turbo" speed from becoming a strobe.
+export const CYCLE_MIN_MS = 5_000
+
+export function cycleMs(intervalSec: number): number {
+  return Math.max(CYCLE_MIN_MS, intervalSec * 1000)
+}

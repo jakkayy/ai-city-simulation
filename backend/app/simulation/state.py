@@ -13,7 +13,7 @@ class CityState:
     is_running: bool = False
     seed: int | None = None
     replay_mode: bool = False
-    tick_interval_seconds: int = 10
+    tick_interval_seconds: int = 60     # one city day = one minute by default
     # temporary city-wide income multiplier (recession / boom)
     income_modifier: float = 1.0
     modifier_days: int = 0

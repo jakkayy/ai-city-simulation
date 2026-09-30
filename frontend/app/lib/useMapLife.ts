@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react"
 import { buildRoute, commuteAt, destFor, makePath, pointAt, scheduleFor, type Path, type Schedule } from "./commute"
-import { circularDelta, formatClock, nightAmount, phaseOf, twilightAmount } from "./dayClock"
+import { circularDelta, cycleMs, formatClock, nightAmount, phaseOf, twilightAmount } from "./dayClock"
 
 export interface Home {
   id: string
@@ -19,7 +19,7 @@ interface Args {
   intervalSec: number
 }
 
-const STEP_MS = 7000          // a single "Step 1 day" plays the day in this long
+const STEP_MS = 20_000         // a single "Step 1 day" plays one map day in this long
 const MORNING = 8             // running starts the clock at 08:00 so people are already moving
 const NIGHT_DARKNESS = 0.42
 const AWAY_OPACITY = 0.5      // a citizen who is out of the house: their home dot fades, not vanishes
@@ -59,7 +59,7 @@ export function useMapLife(args: Args) {
   useEffect(() => {
     const t = time.current
     const now = performance.now()
-    const dur = Math.max(1500, args.intervalSec * 1000)
+    const dur = cycleMs(args.intervalSec)
     if (t.day === null) {
       t.day = args.day
       t.dur = dur
@@ -78,7 +78,7 @@ export function useMapLife(args: Args) {
   // changing the speed keeps the time of day, only the pace changes
   useEffect(() => {
     const t = time.current
-    const dur = Math.max(1500, args.intervalSec * 1000)
+    const dur = cycleMs(args.intervalSec)
     if (t.dur !== dur) {
       const now = performance.now()
       const phase = (((now - t.dayAt) / t.dur) % 1 + 1) % 1
@@ -90,7 +90,7 @@ export function useMapLife(args: Args) {
   // pressing Start resumes in the morning rather than wherever the old day stopped
   useEffect(() => {
     if (args.running) {
-      time.current.dur = Math.max(1500, args.intervalSec * 1000)
+      time.current.dur = cycleMs(args.intervalSec)
       time.current.dayAt = performance.now() - (MORNING / 24) * time.current.dur
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
