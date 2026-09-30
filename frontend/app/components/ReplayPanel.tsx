@@ -71,7 +71,7 @@ export default function ReplayPanel({ isRunning, replayMode, onReplayStart, onRe
         <button
           onClick={handleStop}
           disabled={loading}
-          className="focus-ring rounded-lg bg-violet-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:opacity-50"
+          className="btn btn-violet focus-ring"
         >
           Stop Replay
         </button>
@@ -84,21 +84,21 @@ export default function ReplayPanel({ isRunning, replayMode, onReplayStart, onRe
       <button
         onClick={() => setOpen((o) => !o)}
         disabled={isRunning}
-        className="focus-ring rounded-lg border border-slate-600/70 bg-slate-800/80 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-700 disabled:opacity-40"
+        className="btn focus-ring"
         title={isRunning ? "Stop simulation before replaying" : "Replay from a past day"}
       >
         Replay
       </button>
 
       {open && (
-        <div className="glass-panel absolute right-0 top-11 z-20 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-xl p-4">
+        <div className="panel popover absolute right-0 top-12 z-20 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-xl p-4">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-violet-200">Replay from saved day</p>
 
           {snapshots.length === 0 ? (
             <p className="text-xs text-slate-500">No snapshots yet, run the simulation first.</p>
           ) : (
             <select
-              className="focus-ring rounded-lg border border-slate-600 bg-slate-950/70 p-2 text-sm text-white"
+              className="field focus-ring"
               value={selectedDay ?? ""}
               onChange={(e) => setSelectedDay(Number(e.target.value))}
             >
@@ -116,13 +116,13 @@ export default function ReplayPanel({ isRunning, replayMode, onReplayStart, onRe
             <button
               onClick={handleStart}
               disabled={loading || snapshots.length === 0}
-              className="focus-ring flex-1 rounded-lg bg-violet-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:opacity-50"
+              className="btn btn-violet focus-ring flex-1"
             >
               {loading ? "Starting…" : "Start Replay"}
             </button>
             <button
               onClick={() => setOpen(false)}
-              className="focus-ring rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 transition hover:bg-slate-700"
+              className="btn focus-ring"
             >
               Cancel
             </button>

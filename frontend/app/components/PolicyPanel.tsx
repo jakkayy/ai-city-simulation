@@ -93,6 +93,8 @@ export default function PolicyPanel({ onEnacted }: Props) {
     try {
       const filled: Record<string, number> = {}
       for (const f of meta.fields) filled[f.key] = getParam(f.key, f.defaultValue)
+      // the slider is in percent; the API (and City Manager) use a 0–1 fraction
+      if ("unemployment_reduction" in filled) filled.unemployment_reduction /= 100
       const result = await enactPolicy(type, name.trim(), filled)
       setSuccess(`Enacted "${result.name}" on Day ${result.enacted_day}`)
       setName("")
@@ -109,13 +111,13 @@ export default function PolicyPanel({ onEnacted }: Props) {
     <div className="relative">
       <button
         onClick={() => { setOpen((o) => !o); setError(null); setSuccess(null) }}
-        className="focus-ring rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-950/20 transition hover:bg-cyan-300"
+        className="btn btn-primary focus-ring"
       >
         Enact Policy
       </button>
 
       {open && (
-        <div className="glass-panel absolute right-0 top-12 z-[100] flex w-[24rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl p-0 shadow-2xl shadow-cyan-950/30">
+        <div className="panel popover absolute right-0 top-12 z-[100] flex w-[24rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl p-0 shadow-2xl shadow-cyan-950/30">
           <div className="border-b border-cyan-300/15 bg-cyan-400/10 px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -141,7 +143,7 @@ export default function PolicyPanel({ onEnacted }: Props) {
                 </span>
               </div>
               <select
-                className="focus-ring h-11 w-full rounded-xl border border-slate-600/80 bg-slate-900 px-3 text-sm font-semibold text-white shadow-inner shadow-black/20 transition hover:border-cyan-300/40"
+                className="field focus-ring !h-11 w-full font-semibold"
                 value={type}
                 onChange={(e) => handleTypeChange(e.target.value as PolicyType)}
               >
@@ -159,7 +161,7 @@ export default function PolicyPanel({ onEnacted }: Props) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={`e.g. "${meta.label} Decree"`}
-                className="focus-ring h-11 rounded-xl border border-slate-600/80 bg-slate-950/70 px-3 text-sm text-white placeholder-slate-600 transition hover:border-cyan-300/40"
+                className="field focus-ring !h-11"
               />
             </div>
 
@@ -203,13 +205,13 @@ export default function PolicyPanel({ onEnacted }: Props) {
               <button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="focus-ring flex-1 rounded-xl bg-cyan-400 px-3 py-2.5 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-950/20 transition hover:bg-cyan-300 disabled:opacity-50"
+                className="btn btn-primary focus-ring flex-1"
               >
                 {loading ? "Enacting..." : "Enact Policy"}
               </button>
               <button
                 onClick={() => setOpen(false)}
-                className="focus-ring rounded-xl border border-slate-600/80 bg-slate-800/90 px-3 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-slate-700"
+                className="btn focus-ring"
               >
                 Cancel
               </button>

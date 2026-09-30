@@ -1,0 +1,96 @@
+"use client"
+
+import { useMemo, useState } from "react"
+import CitizenCard from "./CitizenCard"
+import type { Citizen } from "../lib/types"
+import { ZONE_KEYS, ZONE_META } from "../lib/mood"
+
+type SortKey = "happiness_asc" | "happiness_desc" | "savings_desc" | "name"
+
+const SORTS: Record<SortKey, { label: string; fn: (a: Citizen, b: Citizen) => number }> = {
+  happiness_asc: { label: "Least happy first", fn: (a, b) => a.happiness - b.happiness },
+  happiness_desc: { label: "Happiest first", fn: (a, b) => b.happiness - a.happiness },
+  savings_desc: { label: "Richest first", fn: (a, b) => b.savings - a.savings },
+  name: { label: "Name A–Z", fn: (a, b) => a.name.localeCompare(b.name) },
+}
+
+interface Props {
+  citizens: Citizen[]
+  highlightId: string | null
+  onHover: (id: string | null) => void
+}
+
+export default function CitizenGrid({ citizens, highlightId, onHover }: Props) {
+  const [zone, setZone] = useState<"all" | "A" | "B" | "C">("all")
+  const [sort, setSort] = useState<SortKey>("happiness_asc")
+  const [query, setQuery] = useState("")
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return citizens
+      .filter((c) => (zone === "all" || c.zone === zone) && (!q || c.name.toLowerCase().includes(q) || c.job_type.includes(q)))
+      .sort(SORTS[sort].fn)
+  }, [citizens, zone, sort, query])
+
+  return (
+    <section>
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-white">Citizens</h2>
+          <p className="text-xs text-slate-400">
+            Showing {visible.length} of {citizens.length} agents
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1.5">
+            <button className="chip focus-ring" data-active={zone === "all"} onClick={() => setZone("all")}>All</button>
+            {ZONE_KEYS.map((z) => (
+              <button
+                key={z}
+                className="chip focus-ring"
+                data-active={zone === z}
+                onClick={() => setZone(z)}
+                style={zone === z ? undefined : { color: ZONE_META[z].color }}
+              >
+                Zone {z}
+              </button>
+            ))}
+          </div>
+          <input
+            className="field focus-ring w-40 !h-[1.7rem] !rounded-full !text-xs"
+            placeholder="Search name or job"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search citizens"
+          />
+          <select
+            className="field focus-ring !h-[1.7rem] !rounded-full !text-xs"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            aria-label="Sort citizens"
+          >
+            {(Object.keys(SORTS) as SortKey[]).map((k) => (
+              <option key={k} value={k}>{SORTS[k].label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {citizens.length === 0 ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="shimmer h-36 rounded-2xl" />
+          ))}
+        </div>
+      ) : visible.length === 0 ? (
+        <div className="panel rounded-2xl p-8 text-center text-sm text-slate-400">No citizens match this filter.</div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          {visible.map((c) => (
+            <CitizenCard key={c.id} citizen={c} highlighted={c.id === highlightId} onHover={onHover} />
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}

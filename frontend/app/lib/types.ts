@@ -78,3 +78,27 @@ export interface PolicyResponse {
   actual_effects: Record<string, unknown> | null
   narrative: string
 }
+
+export interface EventItem extends SimEvent {
+  uid: number
+  day: number
+}
+
+export interface HistoryPoint {
+  day: number
+  happiness: number
+  fund: number
+  service: number
+}
+
+export interface CityManagerProposal {
+  policy_type: string
+  parameters: Record<string, unknown>
+  reasoning?: string
+  reason?: string
+}
+
+export interface AdvisorMessage {
+  crisis_level: string
+  advice: string
+}

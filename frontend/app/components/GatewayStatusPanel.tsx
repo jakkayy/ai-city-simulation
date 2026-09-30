@@ -25,7 +25,7 @@ export default function GatewayStatusPanel() {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="focus-ring flex items-center gap-1.5 rounded-lg border border-slate-600/70 bg-slate-800/80 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-700"
+        className="btn focus-ring"
         title="LLM Gateway Status"
       >
         <span className={`h-2 w-2 rounded-full ${hasKeys ? "bg-emerald-300" : "bg-slate-500"}`} />
@@ -33,7 +33,7 @@ export default function GatewayStatusPanel() {
       </button>
 
       {open && (
-        <div className="glass-panel absolute right-0 top-11 z-20 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-xl p-4">
+        <div className="panel popover absolute right-0 top-12 z-20 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-3 rounded-xl p-4">
           <div className="flex justify-between items-center">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-300">LLM Gateway Status</p>
             <button onClick={refresh} className="focus-ring rounded-md px-2 py-1 text-xs text-slate-500 hover:bg-slate-700/60 hover:text-slate-200">refresh</button>

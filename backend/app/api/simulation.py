@@ -73,7 +73,6 @@ async def start_replay(body: ReplayRequest, db: AsyncSession = Depends(get_db)):
     city_state.simulation_day = snap.simulation_day
     city_state.city_fund = snap.city_fund
     city_state.service_quality = snap.service_quality
-    city_state.tax_rate = city_state.tax_rate   # keep current tax rate
     city_state.replay_mode = True
     city_state.is_running = True
 

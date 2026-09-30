@@ -1,4 +1,4 @@
-import type { SimStatus, DailySnapshot, PolicyType, PolicyResponse, GatewayStatus } from "./types"
+import type { Citizen, SimStatus, DailySnapshot, PolicyType, PolicyResponse, GatewayStatus } from "./types"
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api"
 
@@ -8,13 +8,40 @@ async function post(path: string, body?: object) {
     headers: { "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
+}
+
+// FastAPI errors look like {"detail": "..."}; show the detail, not raw JSON.
+async function errorMessage(res: Response): Promise<string> {
+  const text = await res.text()
+  try {
+    const detail = JSON.parse(text).detail
+    if (typeof detail === "string") return detail
+    if (Array.isArray(detail)) return detail.map((d) => d.msg).join("; ")
+  } catch {}
+  return text || `Request failed (${res.status})`
 }
 
 export async function fetchStatus(): Promise<SimStatus> {
   const res = await fetch(`${BASE}/simulation/status`)
   return res.json()
+}
+
+export async function fetchCitizens(): Promise<Citizen[]> {
+  const res = await fetch(`${BASE}/citizens`)
+  if (!res.ok) throw new Error(await errorMessage(res))
+  const rows: Citizen[] = await res.json()
+  return rows.map((c) => ({
+    id: c.id,
+    name: c.name,
+    zone: c.zone,
+    happiness: Math.round(c.happiness * 10) / 10,
+    savings: c.savings,
+    job_type: c.job_type,
+    last_action: c.last_action,
+    pending_reaction: c.pending_reaction,
+  }))
 }
 
 export async function fetchSnapshots(): Promise<DailySnapshot[]> {
