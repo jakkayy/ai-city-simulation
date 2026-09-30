@@ -23,6 +23,11 @@ logger = logging.getLogger(__name__)
 _tick_lock = asyncio.Lock()
 _policy_lock = asyncio.Lock()
 
+# Policy Advisor is re-consulted at most every N days while in the same crisis level,
+# otherwise it would fire an LLM call (and a banner) on every single tick.
+_ADVISOR_COOLDOWN_DAYS = 5
+_advisor_last: tuple[int, str] | None = None   # (day, crisis_level)
+
 # injected by main.py so the loop can emit socket events
 _sio = None
 
@@ -168,7 +173,7 @@ async def _do_tick(db: AsyncSession) -> None:
         if proposal:
             await _emit("city_manager_proposal", proposal)
 
-    if crisis in ("critical", "collapse"):
+    if crisis in ("critical", "collapse") and _advisor_due(city_state.simulation_day, crisis):
         advice = await policy_advisor.advise(crisis, agent_ctx, _gateway_module.llm_gateway)
         await _emit("advisor_message", {"crisis_level": crisis, "advice": advice})
 
@@ -216,6 +221,17 @@ async def restore_from_snapshot() -> None:
 
 
 # ── helpers ───────────────────────────────────────────────────────────────
+
+def _advisor_due(day: int, crisis: str) -> bool:
+    """True when the advisor should speak: crisis level changed or cooldown elapsed."""
+    global _advisor_last
+    if _advisor_last is not None:
+        last_day, last_level = _advisor_last
+        if last_level == crisis and day - last_day < _ADVISOR_COOLDOWN_DAYS:
+            return False
+    _advisor_last = (day, crisis)
+    return True
+
 
 def _check_crisis(avg_happiness: float) -> str | None:
     if avg_happiness <= CRISIS_THRESHOLDS["collapse"]:
