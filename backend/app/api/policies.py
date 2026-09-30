@@ -38,6 +38,9 @@ async def enact_policy(
     body: EnactPolicyRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    if city_state.replay_mode:
+        raise HTTPException(status_code=409, detail="Policies cannot be enacted during a replay")
+
     # _policy_lock prevents concurrent enactments from multiple clients
     if _policy_lock.locked():
         raise HTTPException(
@@ -68,7 +71,7 @@ async def enact_policy(
 
         # apply immediate citizen happiness reactions
         citizen_events = await apply_citizen_reactions_to_policy(
-            policy.id, body.policy_type, db
+            policy.id, body.policy_type, db, clean_params
         )
         actual["citizens_affected"] = len(citizen_events)
         actual["avg_happiness_delta"] = (

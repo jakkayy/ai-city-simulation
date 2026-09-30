@@ -10,9 +10,15 @@ from app.simulation.zones import (
     apply_migration_tick,
     get_zone_populations,
     _decide_migration,
+    _WAITLIST_NOTICE_DAYS,
 )
 
 TODAY = date(2026, 1, 1)
+
+
+def _notice_id():
+    """An id for which a waitlisted citizen is reported/penalised on TODAY."""
+    return uuid.UUID(int=(-TODAY.toordinal()) % _WAITLIST_NOTICE_DAYS)
 
 
 def _citizen(
@@ -75,6 +81,15 @@ class TestDecideMigration:
         assert _decide_migration(c, TODAY) == Zone.C
 
     # -- voluntary: no trigger --
+    def test_wealthy_happy_citizen_upgrades_on_their_own(self):
+        c = _citizen(zone=Zone.C, happiness=80.0, days_unhappy=0, savings=5_000.0)
+        assert _decide_migration(c, TODAY) == Zone.B
+
+    def test_wealthy_citizen_respects_zone_lock(self):
+        c = _citizen(zone=Zone.C, happiness=80.0, days_unhappy=0, savings=5_000.0,
+                     zone_locked_until=TODAY + timedelta(days=5))
+        assert _decide_migration(c, TODAY) is None
+
     def test_happy_citizen_stays(self):
         c = _citizen(happiness=60.0, days_unhappy=0)
         assert _decide_migration(c, TODAY) is None
@@ -151,6 +166,7 @@ class TestApplyMigrationTick:
         # fill Zone B to capacity
         residents = [_citizen(zone=Zone.B) for _ in range(ZONE_CAPACITY[Zone.B])]
         mover = _citizen(zone=Zone.C, happiness=30.0, days_unhappy=5, savings=1_000.0)
+        mover.id = _notice_id()
         events = apply_migration_tick(residents + [mover], TODAY)
         assert mover.zone == Zone.C  # didn't move
         waitlisted = [e for e in events if e["event_type"] == "migration_waitlisted"]
@@ -159,8 +175,18 @@ class TestApplyMigrationTick:
     def test_waitlisted_applies_happiness_penalty(self):
         residents = [_citizen(zone=Zone.B) for _ in range(ZONE_CAPACITY[Zone.B])]
         mover = _citizen(zone=Zone.C, happiness=30.0, days_unhappy=5, savings=1_000.0)
+        mover.id = _notice_id()
         apply_migration_tick(residents + [mover], TODAY)
         assert mover.happiness == pytest.approx(28.0)
+
+    def test_waitlist_is_not_reported_every_day(self):
+        residents = [_citizen(zone=Zone.B) for _ in range(ZONE_CAPACITY[Zone.B])]
+        mover = _citizen(zone=Zone.C, happiness=30.0, days_unhappy=5, savings=1_000.0)
+        mover.id = _notice_id()
+        reported = 0
+        for d in range(_WAITLIST_NOTICE_DAYS):
+            reported += len(apply_migration_tick(residents + [mover], TODAY + timedelta(days=d)))
+        assert reported == 1
 
     def test_populations_updated_prevents_overcrowding(self):
         # two citizens both trying to upgrade to Zone B which has 1 slot left

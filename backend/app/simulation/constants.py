@@ -10,16 +10,18 @@ DAILY_INCOME: dict[JobType, float] = {
     JobType.unemployed: 0,
 }
 
+# Tuned so that at the default 15 % tax a typical citizen earns a small surplus in
+# their zone; raise taxes or lose a job and they start to slide.
 DAILY_RENT: dict[Zone, float] = {
-    Zone.A: 200,
-    Zone.B: 120,
-    Zone.C: 60,
+    Zone.A: 120,
+    Zone.B: 70,
+    Zone.C: 45,
 }
 
 DAILY_LIVING_EXPENSES: dict[Zone, float] = {
-    Zone.A: 100,
-    Zone.B: 60,
-    Zone.C: 40,
+    Zone.A: 75,
+    Zone.B: 40,
+    Zone.C: 30,
 }
 
 ZONE_CAPACITY: dict[Zone, int] = {
@@ -38,12 +40,38 @@ TAX_CAP = 0.60
 DEFAULT_TAX_RATE = 0.15
 DEFAULT_SERVICE_QUALITY = 70.0
 
-# city overhead deducted from fund every day
-CITY_DAILY_OVERHEAD = 500.0
+# city running cost per day = base + per-point cost of the current service quality,
+# so a city that keeps services at 100 must actually pay for them
+CITY_BASE_OVERHEAD = 350.0
+CITY_SERVICE_COST_PER_POINT = 12.0
 
 # service quality changes per day
-SERVICE_QUALITY_RECOVERY = 1.0   # when city_fund > 0
-SERVICE_QUALITY_DECAY = 2.0      # when city_fund <= 0
+FUND_RESERVE = 2_000.0            # quality only recovers while the fund is above this
+SERVICE_QUALITY_RECOVERY = 1.0    # fund > FUND_RESERVE
+SERVICE_QUALITY_SLOW_DECAY = 0.3  # 0 < fund <= FUND_RESERVE (services wear out)
+SERVICE_QUALITY_DECAY = 2.0       # fund <= 0
+
+# one-off policy costs / savings
+SERVICE_POLICY_COST_PER_POINT = 100.0   # service_boost: fund cost per quality point
+SERVICE_CUT_SAVING_PER_POINT = 50.0     # service_cut: fund saved per quality point
+HOUSING_SUBSIDY_SHARE = 0.6             # share of housing budget paid out to Zone C residents
+
+# wealthy citizens spend: daily spending = (savings - threshold) * rate
+WEALTH_SPENDING_THRESHOLD = 10_000.0
+WEALTH_SPENDING_RATE = 0.005
+
+# savings below SAVINGS_FLOOR * this factor → bankruptcy (debt is written off)
+BANKRUPTCY_FACTOR = 1.5
+
+# daily chance an employed citizen loses their job
+JOB_LOSS_CHANCE = 0.004
+
+# daily chance of a random city-wide event (recession, boom, disaster, grant)
+CITY_EVENT_CHANCE = 0.04
+
+# happiness drifts toward a target each day by this fraction of the gap
+HAPPINESS_DRIFT_RATE = 0.15
+HAPPINESS_BASE = 55.0
 
 # savings < -(SAVINGS_FLOOR_MONTHS * daily_rent * 30) → force migrate
 SAVINGS_FLOOR_MONTHS = 3

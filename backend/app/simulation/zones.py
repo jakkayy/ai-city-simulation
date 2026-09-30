@@ -17,6 +17,12 @@ _UPGRADE_SAVINGS_THRESHOLD: dict[Zone, float] = {
     Zone.A: 3_000.0,   # B → A
 }
 
+# how often a waitlisted citizen is reported / penalised
+_WAITLIST_NOTICE_DAYS = 30
+
+# savings at which a citizen upgrades on their own, as a multiple of the upgrade threshold
+_ASPIRATION_FACTOR = 2.0
+
 # voluntary move triggers when happiness drops below this for N days
 _VOLUNTARY_HAPPINESS_THRESHOLD = 40.0
 _VOLUNTARY_UNHAPPY_DAYS = 3
@@ -47,7 +53,10 @@ def apply_migration_tick(
             continue
 
         if populations[target] >= ZONE_CAPACITY[target]:
-            # zone is full — put on waitlist, small happiness penalty
+            # zone is full — the citizen keeps waiting, but the penalty and the
+            # event are only applied every _WAITLIST_NOTICE_DAYS days, not daily
+            if (current_date.toordinal() + citizen.id.int) % _WAITLIST_NOTICE_DAYS != 0:
+                continue
             citizen.happiness = max(0.0, citizen.happiness - 2.0)
             events.append({
                 "citizen_id": str(citizen.id),
@@ -90,6 +99,17 @@ def _decide_migration(citizen: Citizen, current_date: date) -> Zone | None:
     if citizen.last_action == "savings_critical":
         return _DOWNGRADE.get(citizen.zone)  # None when already in C
 
+    # aspiration — comfortably wealthy citizens move up even when happy
+    upgrade_target = _UPGRADE.get(citizen.zone)
+    if upgrade_target is not None:
+        threshold = _UPGRADE_SAVINGS_THRESHOLD.get(upgrade_target, float("inf"))
+        unlocked = (
+            citizen.zone_locked_until is None
+            or current_date > citizen.zone_locked_until
+        )
+        if unlocked and citizen.savings >= _ASPIRATION_FACTOR * threshold:
+            return upgrade_target
+
     # voluntary migration — need sustained unhappiness
     if (
         citizen.happiness >= _VOLUNTARY_HAPPINESS_THRESHOLD
@@ -109,7 +129,6 @@ def _decide_migration(citizen: Citizen, current_date: date) -> Zone | None:
         return _DOWNGRADE.get(citizen.zone)  # None when already in C
 
     # try to upgrade if savings allow
-    upgrade_target = _UPGRADE.get(citizen.zone)
     if upgrade_target is not None:
         threshold = _UPGRADE_SAVINGS_THRESHOLD.get(upgrade_target, float("inf"))
         if citizen.savings >= threshold:
