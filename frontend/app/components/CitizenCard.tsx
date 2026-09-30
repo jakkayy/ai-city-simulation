@@ -1,6 +1,8 @@
 "use client"
 
-import { useI18n } from "../lib/i18n"
+import { actionLabel } from "../lib/actions"
+import { DICTS, useI18n } from "../lib/i18n"
+import Avatar from "./Avatar"
 import type { Citizen } from "../lib/types"
 import { moodColor, prettyAction, ZONE_META } from "../lib/mood"
 
@@ -14,7 +16,8 @@ export default function CitizenCard({ citizen, highlighted, onHover }: Props) {
   const { t } = useI18n()
   const zone = ZONE_META[citizen.zone]
   const color = moodColor(citizen.happiness)
-  const initials = citizen.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
+  const action = actionLabel(citizen.last_action)
+  const policyName = (type: string) => (`pol.${type}` in DICTS.th ? t(`pol.${type}`) : type)
   const pct = Math.max(0, Math.min(100, citizen.happiness))
 
   return (
@@ -26,10 +29,10 @@ export default function CitizenCard({ citizen, highlighted, onHover }: Props) {
     >
       <div className="flex items-center gap-3">
         <div
-          className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-slate-950"
-          style={{ background: `linear-gradient(135deg, ${zone.color}, ${zone.color}99)` }}
+          className="relative h-11 w-11 shrink-0 rounded-[0.95rem]"
+          style={{ boxShadow: `0 0 0 1.5px ${zone.color}99` }}
         >
-          {initials}
+          <Avatar seed={citizen.id} happiness={citizen.happiness} job={citizen.job_type} color={zone.color} size={44} />
           {citizen.pending_reaction && (
             <span className="absolute -right-1 -top-1 flex h-3 w-3">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-75" />
@@ -69,8 +72,8 @@ export default function CitizenCard({ citizen, highlighted, onHover }: Props) {
         </span>
       </div>
 
-      <div className="mt-2.5 truncate border-t border-white/[0.06] pt-2 text-[11px] capitalize text-slate-500">
-        {prettyAction(citizen.last_action)}
+      <div className="mt-2.5 truncate border-t border-white/[0.06] pt-2 text-[11px] text-slate-500">
+        {action ? t(action.key, action.vars ? { policy: policyName(action.vars.policy) } : undefined) : prettyAction(citizen.last_action)}
       </div>
     </article>
   )
