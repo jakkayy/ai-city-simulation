@@ -18,11 +18,13 @@
 - **City Manager** เสนอนโยบายทุก 7 วัน (ผ่าน LLM) กดใช้ได้ทันทีจากแดชบอร์ด
 - **Policy Advisor** ให้คำแนะนำเมื่อเข้าสู่วิกฤต (ความสุขเฉลี่ยต่ำ)
 - **ระบบวิกฤต** แจ้งเตือน warning / critical / collapse ตามความสุขเฉลี่ย
-- **Replay** เล่นย้อนจากวันที่บันทึกไว้ โดยไม่เรียก LLM (ใช้กฎสำรองแทน)
+- **Replay** เล่นย้อนจากวันที่บันทึกไว้ โดยไม่เรียก LLM และไม่แก้ข้อมูลจริง
+- **เศรษฐกิจที่ไม่นิ่ง** ความสุขของแต่ละคนขึ้นกับภาษี บริการ เงินเก็บ โซนที่อยู่ และการมีงาน มีเหตุการณ์สุ่ม (ถดถอย/เฟื่องฟู/ภัยพิบัติ/เงินสนับสนุน) คนตกงานหรือล้มละลายได้ และบริการยิ่งดียิ่งมีค่าใช้จ่าย
+- **ควบคุมเมือง** ปรับความเร็ว (2–20 วินาทีต่อวัน) และเริ่มเมืองใหม่ได้จากหน้าเว็บ
 - **ใช้งานง่าย** UI เป็นภาษาไทย (สลับ EN ได้) มีคู่มือกดเปิดดูได้จากปุ่ม “คู่มือ” (เด้งขึ้นเองครั้งแรก) มีสรุปสถานะเมืองเป็นประโยค คำอธิบายตัวเลข และนโยบายแนะนำแบบกดเลือก
 - **แดชบอร์ดเรียลไทม์** กราฟแนวโน้ม แผนที่เมืองที่ประชากรเคลื่อนที่ข้ามโซนแบบ smooth ฟีดเหตุการณ์ และตัวกรองรายชื่อประชากร
 
-> หมายเหตุ: Replay คืนค่าเฉพาะงบเมืองและคุณภาพบริการ ยังไม่ได้คืนสถานะของประชากรแต่ละคน จึงยังไม่ใช่การเล่นซ้ำที่เหมือนเดิมทุกประการ
+> Replay ทำงานบนสำเนาในหน่วยความจำ ไม่แตะข้อมูลจริง ผลเหมือนเดิมทุกครั้ง (seed ตามวัน) ย้อนดูได้เฉพาะวันที่บันทึกหลังอัปเดตที่เก็บสถานะประชากรไว้ใน snapshot
 
 ## สถาปัตยกรรม
 
@@ -46,10 +48,11 @@ backend/
   app/simulation/   ตัวเกมหลัก: loop, economy, zones, policy_engine, citizen_ai, agents, gateway
   app/models/       SQLAlchemy models
   alembic/          database migrations
-  tests/            pytest (122 เทสต์)
+  tests/            pytest (168 เทสต์ รวมการจำลองเมืองระยะยาว 600 วัน)
 frontend/app/
   components/       Dashboard, CityMap, StatCards, EventFeed, ...
-  lib/              useSimulation (state + socket), api, types
+  lib/              useSimulation (state + socket), api, types, i18n (+ vitest)
+scripts/            backup.sh / restore.sh (สำรองและกู้ฐานข้อมูล)
 ```
 
 ## เริ่มพัฒนาบนเครื่อง
@@ -144,6 +147,23 @@ Deploy ด้วยมือผ่าน GitHub ได้จากแท็บ A
 
 > ความปลอดภัย: self-hosted runner รันโค้ดจาก workflow บนเครื่องคุณ ใช้กับ repo ส่วนตัวเท่านั้น อย่าเปิดให้ pull request จาก fork ภายนอกรัน workflow บนเครื่องนี้
 
+### สำรองและกู้ข้อมูล
+
+ข้อมูลเมืองอยู่ใน Docker volume ของ PostgreSQL บนเครื่องเดียว ควรสำรองไว้:
+
+```bash
+scripts/backup.sh              # สร้าง backups/aicity-<เวลา>.sql.gz เก็บ 14 ไฟล์ล่าสุด (ตั้ง KEEP=30 เพื่อเก็บมากขึ้น)
+scripts/restore.sh backups/aicity-XXXX.sql.gz   # กู้คืน (จะแทนที่ฐานข้อมูลปัจจุบัน)
+```
+
+ตั้ง cron ให้สำรองทุกวัน (`crontab -e`):
+
+```
+30 3 * * * /path/to/ai-city/scripts/backup.sh >> /path/to/ai-city/backups/backup.log 2>&1
+```
+
+ควรคัดลอกโฟลเดอร์ `backups/` ไปเก็บไว้อีกเครื่องหรือ cloud ด้วย เพราะถ้าดิสก์เสีย ไฟล์สำรองบนเครื่องเดียวกันจะหายไปด้วย
+
 ## รันเทสต์
 
 ```bash
@@ -152,13 +172,13 @@ source venv/bin/activate
 pytest tests/ -v
 ```
 
-122 เทสต์ ครอบคลุม economy, zones, gateway, citizen AI, policy engine, agents และ replay
+168 เทสต์ ครอบคลุม economy, zones, gateway, citizen AI, policy engine, agents, replay และการจำลองเมืองระยะยาว (ตรวจว่าเศรษฐกิจไม่พังเป็นสภาพนิ่งตายตัว)
 
 ฝั่ง frontend:
 
 ```bash
 cd frontend
-npx tsc --noEmit && npm run lint
+npx tsc --noEmit && npm run lint && npm test
 ```
 
 ## CI/CD
