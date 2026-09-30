@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useI18n } from "../lib/i18n"
+import Avatar from "./Avatar"
 import type { Citizen } from "../lib/types"
 import { moodColor, MOOD, ZONE_KEYS, ZONE_META, type ZoneKey } from "../lib/mood"
 
@@ -355,17 +356,18 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover }: Pr
 
 function Tooltip({ slot }: { slot: Slot }) {
   const { citizen: c, x, y } = slot
-  const job = c.job_type.replace(/_/g, " ")
-  const tw = 150
-  const th = 44
+  const { t } = useI18n()
+  const tw = 190
+  const th = 50
   const tx = Math.min(W - tw - 6, Math.max(6, x - tw / 2))
   const ty = y - th - 14 < 8 ? y + 16 : y - th - 14
   return (
     <g style={{ pointerEvents: "none" }} transform={`translate(${tx} ${ty})`}>
       <rect width={tw} height={th} rx={8} fill="#060b16" stroke={moodColor(c.happiness)} strokeOpacity={0.7} opacity={0.96} />
-      <text x={10} y={17} fontSize={11} fill="#fff" fontWeight={700}>{c.name}</text>
-      <text x={10} y={32} fontSize={9} fill="#94a3b8" style={{ textTransform: "capitalize" }}>{job}</text>
-      <text x={tw - 10} y={32} fontSize={10} textAnchor="end" fill={moodColor(c.happiness)} fontWeight={800} fontFamily="var(--font-geist-mono), monospace">
+      <Avatar seed={c.id} happiness={c.happiness} job={c.job_type} color={ZONE_META[c.zone].color} size={38} x={7} y={6} />
+      <text x={54} y={21} fontSize={11} fill="#fff" fontWeight={700}>{c.name}</text>
+      <text x={54} y={36} fontSize={9} fill="#94a3b8">{t(`job.${c.job_type}`)}</text>
+      <text x={tw - 10} y={36} fontSize={11} textAnchor="end" fill={moodColor(c.happiness)} fontWeight={800} fontFamily="var(--font-geist-mono), monospace">
         {c.happiness.toFixed(0)}
       </text>
     </g>
