@@ -4,9 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useI18n } from "../lib/i18n"
 import Avatar from "./Avatar"
 import { CORE_OFFSET, Districts, World, WORLD, type WorkCounts } from "./Districts"
+import NightLayer from "./NightLayer"
 import { useMapView } from "../lib/useMapView"
+import { useMapLife } from "../lib/useMapLife"
+import { hashString } from "../lib/avatar"
 import { viewAround } from "../lib/mapView"
-import { PARK_BOX, SERVICES_BOX } from "../lib/mapLayout"
+import { DISTRICT_WINDOWS, PARK_BOX, SERVICES_BOX } from "../lib/mapLayout"
 import type { Citizen } from "../lib/types"
 import { moodColor, MOOD, ZONE_KEYS, ZONE_META, type ZoneKey } from "../lib/mood"
 
@@ -70,6 +73,10 @@ function Defs() {
       <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
         <stop offset="55%" stopColor="#000" stopOpacity={0} />
         <stop offset="100%" stopColor="#000" stopOpacity={0.6} />
+      </radialGradient>
+      <radialGradient id="lamp-glow">
+        <stop offset="0%" stopColor="#fde68a" stopOpacity={0.55} />
+        <stop offset="100%" stopColor="#fde68a" stopOpacity={0} />
       </radialGradient>
       <linearGradient id="road" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stopColor="#222e42" />
@@ -240,12 +247,37 @@ function ZonePanel({ zone, pop, avg }: { zone: ZoneKey; pop: number; avg: number
   )
 }
 
+// Windows that are lit at night: the same grid the zone buildings draw, a stable ~60 % of them.
+function litWindows() {
+  const out: { x: number; y: number; w: number; h: number }[] = []
+  for (const zone of ZONE_KEYS) {
+    const L = LAYOUT[zone]
+    const base = L.y + L.bldBase
+    BUILDINGS[zone].forEach((b, bi) => {
+      const bx = L.x + b.dx
+      const by = base - b.h
+      const cols = Math.max(2, Math.floor((b.w - 6) / 6))
+      const rows = Math.max(2, Math.floor((b.h - 6) / 8))
+      for (let n = 0; n < rows * cols; n++) {
+        if (hashString(`${zone}:${bi}:${n}`) % 100 >= 62) continue
+        out.push({ x: CORE_OFFSET.x + bx + 4 + (n % cols) * 6, y: CORE_OFFSET.y + by + 5 + Math.floor(n / cols) * 8, w: 3, h: 4 })
+      }
+    })
+  }
+  return [...out, ...DISTRICT_WINDOWS]
+}
+
+const WINDOWS = litWindows()
+
 interface Props {
   citizens: Citizen[]
   zonePops: { A: number; B: number; C: number }
   highlightId: string | null
   onHover: (id: string | null) => void
   serviceQuality?: number
+  day?: number
+  running?: boolean
+  intervalSec?: number
 }
 
 function IconButton({ label, onClick, children, disabled }: { label: string; onClick: () => void; children: React.ReactNode; disabled?: boolean }) {
@@ -263,12 +295,18 @@ function IconButton({ label, onClick, children, disabled }: { label: string; onC
   )
 }
 
-export default function CityMap({ citizens, zonePops, highlightId, onHover, serviceQuality = 0 }: Props) {
+export default function CityMap({ citizens, zonePops, highlightId, onHover, serviceQuality = 0, day = 0, running = false, intervalSec = 10 }: Props) {
   const { t } = useI18n()
   const [glow, setGlow] = useState(true)
   const [localHover, setLocalHover] = useState<string | null>(null)
   const slots = useMemo(() => layoutDots(citizens), [citizens])
   const { svgRef, view, zoom, dragging, handlers, zoomIn, zoomOut, reset, focus, pan } = useMapView(WORLD)
+
+  const homes = useMemo(
+    () => slots.map(({ citizen, x, y }) => ({ id: citizen.id, zone: citizen.zone, job: citizen.job_type, x: x + CORE_OFFSET.x, y: y + CORE_OFFSET.y })),
+    [slots],
+  )
+  const { setNight, setDusk, setLights, setClock, setChip, walkerRef, dotRef } = useMapLife({ homes, running, day, intervalSec })
 
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
@@ -410,7 +448,11 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover, serv
             ))}
             <Roads />
             <Traffic />
+          </g>
 
+          <NightLayer windows={WINDOWS} setNight={setNight} setDusk={setDusk} setLights={setLights} />
+
+          <g transform={`translate(${CORE_OFFSET.x} ${CORE_OFFSET.y})`}>
             {glow && (
               <g filter="url(#blur-glow)" opacity={0.55} style={{ pointerEvents: "none" }}>
                 {slots.map(({ citizen, x, y }) => (
@@ -425,6 +467,7 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover, serv
               return (
                 <g
                   key={citizen.id}
+                  ref={dotRef(citizen.id)}
                   className="map-dot"
                   style={{ transform: `translate(${x}px, ${y}px)` }}
                   onMouseEnter={() => hover(citizen.id)}
@@ -448,8 +491,28 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover, serv
               <text y={-19} textAnchor="middle" fontSize={7} fill="#7e8fab" fontWeight={800}>N</text>
             </g>
           </g>
+          {/* citizens on their way to work (positions set every frame by useMapLife) */}
+          <g style={{ pointerEvents: "none" }}>
+            {slots.map(({ citizen }) => (
+              <g key={citizen.id} ref={walkerRef(citizen.id)} opacity={0}>
+                <circle r={6} fill={moodColor(citizen.happiness)} opacity={0.28} />
+                <circle r={3.3} fill={moodColor(citizen.happiness)} stroke="#04070d" strokeWidth={1.1} />
+              </g>
+            ))}
+          </g>
           <rect width={WORLD.w} height={WORLD.h} fill="url(#vignette)" pointerEvents="none" />
         </svg>
+
+        {/* city clock */}
+        <div
+          ref={setChip}
+          data-phase="day"
+          title={t("map.clock")}
+          className="clock-chip pointer-events-none absolute left-3 top-2.5 flex items-center gap-2 rounded-lg border border-white/15 bg-slate-950/70 px-2.5 py-1.5 backdrop-blur"
+        >
+          <span className="clock-icon h-2.5 w-2.5 rounded-full" />
+          <span ref={setClock} className="num text-xs font-bold text-slate-100">12:00</span>
+        </div>
 
         {/* view controls */}
         <div className="absolute right-3 top-2.5 flex flex-row gap-1.5">

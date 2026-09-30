@@ -75,4 +75,11 @@ def test_reset_keeps_tick_interval():
     reset_city_state()
     assert city_state.tick_interval_seconds == 3
     assert city_state.is_running is False
-    city_state.tick_interval_seconds = 10
+    city_state.tick_interval_seconds = 60
+
+
+def test_a_city_day_is_one_minute_by_default():
+    from app.api.simulation import StartRequest
+
+    assert CityState().tick_interval_seconds == 60
+    assert StartRequest().tick_interval_seconds == 60

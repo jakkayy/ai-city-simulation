@@ -82,7 +82,7 @@ export default function Dashboard() {
           onStep={sim.step}
           onPolicyEnacted={() => { sim.refreshStatus(); setPolicyVersion((v) => v + 1) }}
           onReplayChange={() => { sim.refreshStatus(); sim.reload() }}
-          speed={status?.tick_interval_seconds ?? 10}
+          speed={status?.tick_interval_seconds ?? 60}
           onSpeed={sim.changeSpeed}
           onReset={sim.reset}
           onOpenGuide={() => setGuideOpen(true)}
@@ -117,7 +117,7 @@ export default function Dashboard() {
             />
             <ZoneStrip citizens={citizens} pops={pops} />
             {citizens.length > 0 ? (
-              <CityMap citizens={citizens} zonePops={pops} highlightId={highlightId} onHover={setHighlightId} serviceQuality={serviceQuality} />
+              <CityMap citizens={citizens} zonePops={pops} highlightId={highlightId} onHover={setHighlightId} serviceQuality={serviceQuality} day={day} running={isRunning} intervalSec={status?.tick_interval_seconds ?? 60} />
             ) : (
               <div className="shimmer h-[28rem] rounded-2xl" />
             )}

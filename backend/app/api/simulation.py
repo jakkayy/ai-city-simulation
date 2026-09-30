@@ -23,7 +23,7 @@ router = APIRouter(prefix="/simulation", tags=["simulation"])
 
 
 class StartRequest(BaseModel):
-    tick_interval_seconds: int = Field(default=10, ge=1, le=3600)
+    tick_interval_seconds: int = Field(default=60, ge=1, le=3600)
 
 
 class SpeedRequest(BaseModel):

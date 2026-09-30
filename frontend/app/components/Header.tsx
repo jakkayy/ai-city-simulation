@@ -27,10 +27,10 @@ interface Props {
 }
 
 const SPEEDS = [
-  { key: "slow", seconds: 20 },
-  { key: "normal", seconds: 10 },
-  { key: "fast", seconds: 5 },
-  { key: "turbo", seconds: 2 },
+  { key: "slow", seconds: 120 },
+  { key: "normal", seconds: 60 },
+  { key: "fast", seconds: 30 },
+  { key: "turbo", seconds: 10 },
 ] as const
 
 function ResetButton({ disabled, onReset }: { disabled: boolean; onReset: () => void }) {

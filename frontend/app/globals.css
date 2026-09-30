@@ -416,6 +416,23 @@ html[lang="th"] .field-pill {
   animation: think 1.4s ease-out infinite;
 }
 
+.clock-icon {
+  background: #fde68a;
+  box-shadow: 0 0 8px rgba(253, 230, 138, 0.8);
+  transition: background 0.6s, box-shadow 0.6s;
+}
+
+.clock-chip[data-phase="dawn"] .clock-icon,
+.clock-chip[data-phase="dusk"] .clock-icon {
+  background: #fb923c;
+  box-shadow: 0 0 8px rgba(251, 146, 60, 0.8);
+}
+
+.clock-chip[data-phase="night"] .clock-icon {
+  background: #c7d2fe;
+  box-shadow: inset -2.5px -1px 0 #1e1b4b, 0 0 8px rgba(165, 180, 252, 0.7);
+}
+
 .win {
   animation: twinkle 4s ease-in-out infinite;
 }
