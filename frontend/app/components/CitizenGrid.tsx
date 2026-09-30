@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { useI18n } from "../lib/i18n"
 import CitizenCard from "./CitizenCard"
+import Select from "./Select"
 import type { Citizen } from "../lib/types"
 import { ZONE_KEYS, ZONE_META } from "../lib/mood"
 
@@ -59,22 +60,20 @@ export default function CitizenGrid({ citizens, highlightId, onHover }: Props) {
             ))}
           </div>
           <input
-            className="field focus-ring w-40 !h-[1.7rem] !rounded-full !text-xs"
+            className="field field-pill focus-ring w-44"
             placeholder={t("cit.search")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             aria-label={t("cit.search")}
           />
-          <select
-            className="field focus-ring !h-[1.7rem] !rounded-full !text-xs"
+          <Select
+            variant="pill"
+            className="min-w-[10.5rem]"
+            ariaLabel={t("cit.sort")}
             value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-            aria-label="Sort"
-          >
-            {(Object.keys(SORTS) as SortKey[]).map((k) => (
-              <option key={k} value={k}>{t(`sort.${k}`)}</option>
-            ))}
-          </select>
+            onChange={setSort}
+            options={(Object.keys(SORTS) as SortKey[]).map((k) => ({ value: k, label: t(`sort.${k}`) }))}
+          />
         </div>
       </div>
 

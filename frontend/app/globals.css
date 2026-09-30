@@ -295,6 +295,17 @@ html[lang="th"] .chip {
   color: #5b6884;
 }
 
+.field-pill {
+  height: 1.7rem;
+  border-radius: 999px;
+  padding: 0 0.85rem;
+  font-size: 0.75rem;
+}
+
+html[lang="th"] .field-pill {
+  height: 2.1rem;
+}
+
 .field:hover {
   border-color: rgba(34, 211, 238, 0.4);
 }

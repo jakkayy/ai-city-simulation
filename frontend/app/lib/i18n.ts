@@ -267,6 +267,7 @@ const th: Dict = {
   "ev.city_event.boom": "เศรษฐกิจเฟื่องฟู: รายได้เพิ่ม 20% เป็นเวลา {days} วัน",
   "ev.city_event.disaster": "เกิดภัยพิบัติ: บริการเสียหาย ค่าซ่อม ${cost}",
   "ev.city_event.grant": "รัฐส่งเงินสนับสนุน ${amount} เข้างบเมือง",
+  "cit.sort": "เรียงลำดับ",
   // guide
   "guide.title": "คู่มือการใช้งาน",
   "guide.welcome": "ยินดีต้อนรับสู่เมืองจำลอง",
@@ -537,6 +538,7 @@ const en: Dict = {
   "ev.city_event.boom": "Economic boom: incomes rise 20% for {days} days.",
   "ev.city_event.disaster": "Disaster strikes: services are damaged and repairs cost ${cost}.",
   "ev.city_event.grant": "The state sends a ${amount} grant to the city fund.",
+  "cit.sort": "Sort by",
   "guide.title": "User Guide",
   "guide.welcome": "Welcome to the city simulation",
   "guide.next": "Next",

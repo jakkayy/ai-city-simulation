@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { enactPolicy } from "../lib/api"
 import { useI18n } from "../lib/i18n"
+import Select from "./Select"
 import type { PolicyType } from "../lib/types"
 
 interface Field { key: string; min: number; max: number; step: number; defaultValue: number }
@@ -156,14 +157,14 @@ export default function PolicyPanel({ onEnacted }: Props) {
               <>
                 <div className="rounded-xl border border-slate-700/80 bg-slate-950/45 p-3">
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400" htmlFor="pol-type">{t("pol.type")}</label>
-                  <select
+                  <Select
                     id="pol-type"
-                    className="field focus-ring !h-11 w-full font-semibold"
+                    className="!h-11 w-full font-semibold"
+                    ariaLabel={t("pol.type")}
                     value={type}
-                    onChange={(e) => { setType(e.target.value as PolicyType); setParams({}); reset() }}
-                  >
-                    {POLICY_TYPES.map((k) => <option key={k} value={k}>{t(`pol.${k}`)}</option>)}
-                  </select>
+                    onChange={(v) => { setType(v); setParams({}); reset() }}
+                    options={POLICY_TYPES.map((k) => ({ value: k, label: t(`pol.${k}`) }))}
+                  />
                   <p className="mt-2 text-xs leading-relaxed text-slate-400">{t(`pol.${type}.d`)}</p>
                 </div>
 
