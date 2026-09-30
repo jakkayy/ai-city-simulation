@@ -14,6 +14,8 @@ export interface SimEvent {
   event_type: string
   narrative: string
   happiness_delta: number
+  // structured details sent by newer backends, used to translate the narrative
+  data?: Record<string, string | number>
 }
 
 export interface TickData {

@@ -1,13 +1,17 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useI18n } from "../lib/i18n"
 import Avatar from "./Avatar"
+import { CORE_OFFSET, Districts, World, WORLD, type WorkCounts } from "./Districts"
+import { useMapView } from "../lib/useMapView"
+import { viewAround } from "../lib/mapView"
+import { PARK_BOX, SERVICES_BOX } from "../lib/mapLayout"
 import type { Citizen } from "../lib/types"
 import { moodColor, MOOD, ZONE_KEYS, ZONE_META, type ZoneKey } from "../lib/mood"
 
-const W = 760
-const H = 500
+// the city core is drawn in its own 760 x 500 space and placed inside the larger world
+const CW = 760
 
 const LAYOUT: Record<ZoneKey, { x: number; y: number; w: number; h: number; cols: number; dotsY: number; bldBase: number }> = {
   A: { x: 56, y: 52, w: 260, h: 164, cols: 8, dotsY: 112, bldBase: 92 },
@@ -95,27 +99,25 @@ function Ground() {
   const { t } = useI18n()
   return (
     <g>
-      <rect width={W} height={H} fill="#070d19" />
-      <rect width={W} height={H} fill="url(#city-grid)" opacity={0.7} />
       <rect x={34} y={30} width={692} height={444} rx={18} fill="none" stroke="#22324d" strokeWidth={1} />
 
       {/* park */}
-      <g>
-        <rect x={84} y={326} width={112} height={72} rx={14} fill="#0c2a1f" stroke="#1f6b4c" strokeOpacity={0.6} />
-        {[[104, 350], [124, 368], [150, 346], [172, 372], [140, 384]].map(([x, y], i) => (
+      <g transform={`translate(${PARK_BOX.x} ${PARK_BOX.y})`}>
+        <rect width={PARK_BOX.w} height={PARK_BOX.h} rx={14} fill="#0c2a1f" stroke="#1f6b4c" strokeOpacity={0.6} />
+        {[[22, 30], [42, 48], [68, 26], [90, 52], [58, 58]].map(([x, y], i) => (
           <g key={i}>
             <circle cx={x} cy={y} r={9} fill="#14532d" opacity={0.85} />
             <circle cx={x - 2} cy={y - 2} r={4} fill="#22c55e" opacity={0.35} />
           </g>
         ))}
-        <text x={140} y={340} textAnchor="middle" fontSize={8} fill="#6ee7b7" fontWeight={700} letterSpacing={1.2}>{t("map.park")}</text>
+        <text x={PARK_BOX.w / 2} y={15} textAnchor="middle" fontSize={8} fill="#6ee7b7" fontWeight={700} letterSpacing={1.2}>{t("map.park")}</text>
       </g>
 
       {/* services */}
-      <g>
-        <rect x={568} y={326} width={104} height={72} rx={14} fill="#10203a" stroke="#3b6ea8" strokeOpacity={0.55} />
-        <path d="M620 346v24M608 358h24" stroke="#7dd3fc" strokeWidth={4} strokeLinecap="round" opacity={0.75} />
-        <text x={620} y={390} textAnchor="middle" fontSize={8} fill="#93c5fd" fontWeight={700} letterSpacing={1.2}>{t("map.services")}</text>
+      <g transform={`translate(${SERVICES_BOX.x} ${SERVICES_BOX.y})`}>
+        <rect width={SERVICES_BOX.w} height={SERVICES_BOX.h} rx={14} fill="#10203a" stroke="#3b6ea8" strokeOpacity={0.55} />
+        <path d={`M${SERVICES_BOX.w / 2} 16v24M${SERVICES_BOX.w / 2 - 12} 28h24`} stroke="#7dd3fc" strokeWidth={4} strokeLinecap="round" opacity={0.75} />
+        <text x={SERVICES_BOX.w / 2} y={60} textAnchor="middle" fontSize={8} fill="#93c5fd" fontWeight={700} letterSpacing={1.2}>{t("map.services")}</text>
       </g>
     </g>
   )
@@ -243,13 +245,69 @@ interface Props {
   zonePops: { A: number; B: number; C: number }
   highlightId: string | null
   onHover: (id: string | null) => void
+  serviceQuality?: number
 }
 
-export default function CityMap({ citizens, zonePops, highlightId, onHover }: Props) {
+function IconButton({ label, onClick, children, disabled }: { label: string; onClick: () => void; children: React.ReactNode; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className="focus-ring flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-slate-950/70 text-slate-200 backdrop-blur transition hover:border-cyan-300/60 hover:text-white disabled:opacity-35"
+    >
+      {children}
+    </button>
+  )
+}
+
+export default function CityMap({ citizens, zonePops, highlightId, onHover, serviceQuality = 0 }: Props) {
   const { t } = useI18n()
   const [glow, setGlow] = useState(true)
   const [localHover, setLocalHover] = useState<string | null>(null)
   const slots = useMemo(() => layoutDots(citizens), [citizens])
+  const { svgRef, view, zoom, dragging, handlers, zoomIn, zoomOut, reset, focus, pan } = useMapView(WORLD)
+
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+  const [fullscreen, setFullscreen] = useState(false)
+
+  useEffect(() => {
+    const sync = () => setFullscreen(document.fullscreenElement === wrapRef.current || fullscreen)
+    const onChange = () => setFullscreen(document.fullscreenElement === wrapRef.current)
+    document.addEventListener("fullscreenchange", onChange)
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false) }
+    window.addEventListener("keydown", onKey)
+    void sync
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange)
+      window.removeEventListener("keydown", onKey)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const toggleFullscreen = async () => {
+    const el = wrapRef.current
+    if (!el) return
+    if (document.fullscreenElement) {
+      await document.exitFullscreen().catch(() => {})
+      return
+    }
+    if (fullscreen) { setFullscreen(false); return }   // fallback overlay is on
+    if (el.requestFullscreen) {
+      try { await el.requestFullscreen(); return } catch {}
+    }
+    setFullscreen(true)   // browsers without the Fullscreen API: fill the window instead
+  }
+
+  // phones: start on the city centre instead of the tiny whole-world view
+  useEffect(() => {
+    if (window.innerWidth < 640) {
+      focus(viewAround(CORE_OFFSET.x + CW / 2, CORE_OFFSET.y + 250, 1.45, WORLD))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const avg = useMemo(() => {
     const out: Record<ZoneKey, number | null> = { A: null, B: null, C: null }
@@ -260,6 +318,18 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover }: Pr
     return out
   }, [citizens])
 
+  const counts: WorkCounts = useMemo(() => {
+    const n = (job: string) => citizens.filter((c) => c.job_type === job).length
+    return {
+      teacher: n("teacher"),
+      laborer: n("laborer"),
+      farmer: n("farmer"),
+      service: n("service_worker"),
+      business: n("business_owner") + n("professional"),
+      unemployed: n("unemployed"),
+    }
+  }, [citizens])
+
   const activeId = localHover ?? highlightId
   const active = slots.find((s) => s.citizen.id === activeId)
 
@@ -268,9 +338,33 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover }: Pr
     onHover(id)
   }
 
+  const focusCore = () =>
+    focus(viewAround(CORE_OFFSET.x + CW / 2, CORE_OFFSET.y + 250, 1.45, WORLD))
+
+  const v = view
+  const vh = (v.w * WORLD.h) / WORLD.w
+  const zoomed = zoom > 1.02
+
+  const workplaces = [
+    { label: t("map.school"), n: counts.teacher, c: "#60a5fa" },
+    { label: t("map.factory"), n: counts.laborer, c: "#f97316" },
+    { label: t("map.farm"), n: counts.farmer, c: "#a3e635" },
+    { label: t("map.cbd"), n: counts.business, c: "#22d3ee" },
+    { label: t("map.marketLegend"), n: counts.service, c: "#c084fc" },
+    { label: t("job.unemployed"), n: counts.unemployed, c: "#94a3b8" },
+  ]
+
   return (
-    <section className="panel fade-up overflow-hidden rounded-2xl p-4" style={{ animationDelay: "300ms" }}>
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-3 px-1">
+    <section
+      ref={wrapRef}
+      className={
+        fullscreen
+          ? "fixed inset-0 z-[250] flex flex-col gap-3 bg-[#05070d] p-4"
+          : "panel fade-up flex flex-col gap-3.5 overflow-hidden rounded-2xl p-4"
+      }
+      style={fullscreen ? undefined : { animationDelay: "300ms" }}
+    >
+      <div className="flex flex-wrap items-end justify-between gap-3 px-1">
         <div>
           <h2 className="text-base font-semibold text-white">{t("map.title")}</h2>
           <p className="text-xs text-slate-400">{t("map.sub")}</p>
@@ -280,57 +374,114 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover }: Pr
         </button>
       </div>
 
-      <div className="relative overflow-hidden rounded-xl border border-white/[0.08]">
-        <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img" aria-label="City map with zones, roads, and citizen happiness markers">
+      <div
+        className={`relative overflow-hidden rounded-xl border border-white/[0.08] ${fullscreen ? "min-h-0 flex-1" : ""}`}
+        tabIndex={0}
+        aria-label={t("map.zoomHint")}
+        onKeyDown={(e) => {
+          if (e.key === "+" || e.key === "=") zoomIn()
+          else if (e.key === "-") zoomOut()
+          else if (e.key === "0") reset()
+          else if (e.key === "ArrowLeft") pan(-0.15, 0)
+          else if (e.key === "ArrowRight") pan(0.15, 0)
+          else if (e.key === "ArrowUp") pan(0, -0.15)
+          else if (e.key === "ArrowDown") pan(0, 0.15)
+          else return
+          e.preventDefault()
+        }}
+      >
+        <svg
+          ref={svgRef}
+          viewBox={`${v.x} ${v.y} ${v.w} ${vh}`}
+          className={`block ${fullscreen ? "h-full w-full" : "w-full"}`}
+          style={{ cursor: dragging ? "grabbing" : zoomed ? "grab" : "default", touchAction: zoomed ? "none" : "pan-y" }}
+          role="img"
+          aria-label="City map with zones, roads, and citizen happiness markers"
+          {...handlers}
+        >
           <Defs />
-          <Ground />
-          {ZONE_KEYS.map((z) => (
-            <ZonePanel key={z} zone={z} pop={zonePops[z]} avg={avg[z]} />
-          ))}
-          <Roads />
-          <Traffic />
+          <World />
+          <Districts counts={counts} serviceQuality={serviceQuality} />
 
-          {glow && (
-            <g filter="url(#blur-glow)" opacity={0.55} style={{ pointerEvents: "none" }}>
-              {slots.map(({ citizen, x, y }) => (
-                <circle key={citizen.id} cx={x} cy={y} r={11} fill={moodColor(citizen.happiness)} opacity={0.5} />
-              ))}
-            </g>
-          )}
+          <g transform={`translate(${CORE_OFFSET.x} ${CORE_OFFSET.y})`}>
+            <Ground />
+            {ZONE_KEYS.map((z) => (
+              <ZonePanel key={z} zone={z} pop={zonePops[z]} avg={avg[z]} />
+            ))}
+            <Roads />
+            <Traffic />
 
-          {slots.map(({ citizen, x, y }) => {
-            const color = moodColor(citizen.happiness)
-            const on = citizen.id === activeId
-            return (
-              <g
-                key={citizen.id}
-                className="map-dot"
-                style={{ transform: `translate(${x}px, ${y}px)` }}
-                onMouseEnter={() => hover(citizen.id)}
-                onMouseLeave={() => hover(null)}
-              >
-                <circle r={DOT_R + 5} fill="transparent" />
-                {on && <circle r={DOT_R + 4} fill="none" stroke="#fff" strokeOpacity={0.9} strokeWidth={1.5} />}
-                {citizen.pending_reaction && <circle className="think-ring" r={DOT_R} stroke={color} />}
-                <circle className="core" r={on ? DOT_R + 1 : DOT_R} fill={color} stroke="#04070d" strokeWidth={1.5} />
-                <circle cx={-1.8} cy={-1.8} r={1.7} fill="#fff" opacity={0.5} />
+            {glow && (
+              <g filter="url(#blur-glow)" opacity={0.55} style={{ pointerEvents: "none" }}>
+                {slots.map(({ citizen, x, y }) => (
+                  <circle key={citizen.id} cx={x} cy={y} r={11} fill={moodColor(citizen.happiness)} opacity={0.5} />
+                ))}
               </g>
-            )
-          })}
+            )}
 
-          {active && <Tooltip slot={active} />}
+            {slots.map(({ citizen, x, y }) => {
+              const color = moodColor(citizen.happiness)
+              const on = citizen.id === activeId
+              return (
+                <g
+                  key={citizen.id}
+                  className="map-dot"
+                  style={{ transform: `translate(${x}px, ${y}px)` }}
+                  onMouseEnter={() => hover(citizen.id)}
+                  onMouseLeave={() => hover(null)}
+                >
+                  <circle r={DOT_R + 5} fill="transparent" />
+                  {on && <circle r={DOT_R + 4} fill="none" stroke="#fff" strokeOpacity={0.9} strokeWidth={1.5} />}
+                  {citizen.pending_reaction && <circle className="think-ring" r={DOT_R} stroke={color} />}
+                  <circle className="core" r={on ? DOT_R + 1 : DOT_R} fill={color} stroke="#04070d" strokeWidth={1.5} />
+                  <circle cx={-1.8} cy={-1.8} r={1.7} fill="#fff" opacity={0.5} />
+                </g>
+              )
+            })}
 
-          {/* compass */}
-          <g transform="translate(700, 452)" opacity={0.85}>
-            <circle r={16} fill="#0b1324" stroke="#334766" />
-            <path d="M0 -10 L4.5 6 L0 3 L-4.5 6 Z" fill="#cbd5e1" />
-            <text y={-19} textAnchor="middle" fontSize={7} fill="#7e8fab" fontWeight={800}>N</text>
+            {active && <Tooltip slot={active} />}
+
+            {/* compass */}
+            <g transform="translate(700, 452)" opacity={0.85}>
+              <circle r={16} fill="#0b1324" stroke="#334766" />
+              <path d="M0 -10 L4.5 6 L0 3 L-4.5 6 Z" fill="#cbd5e1" />
+              <text y={-19} textAnchor="middle" fontSize={7} fill="#7e8fab" fontWeight={800}>N</text>
+            </g>
           </g>
-          <rect width={W} height={H} fill="url(#vignette)" pointerEvents="none" />
+          <rect width={WORLD.w} height={WORLD.h} fill="url(#vignette)" pointerEvents="none" />
         </svg>
+
+        {/* view controls */}
+        <div className="absolute right-3 top-2.5 flex flex-row gap-1.5">
+          <IconButton label={fullscreen ? t("map.exitFullscreen") : t("map.fullscreen")} onClick={toggleFullscreen}>
+            {fullscreen ? (
+              <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><path d="M6 2v4H2M10 14v-4h4M14 6h-4V2M2 10h4v4" /></svg>
+            ) : (
+              <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><path d="M2 6V2h4M14 10v4h-4M10 2h4v4M6 14H2v-4" /></svg>
+            )}
+          </IconButton>
+          <IconButton label={t("map.zoomIn")} onClick={zoomIn} disabled={zoom >= 4.98}>
+            <svg viewBox="0 0 16 16" className="h-4 w-4" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round"><path d="M8 3v10M3 8h10" /></svg>
+          </IconButton>
+          <IconButton label={t("map.zoomOut")} onClick={zoomOut} disabled={!zoomed}>
+            <svg viewBox="0 0 16 16" className="h-4 w-4" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round"><path d="M3 8h10" /></svg>
+          </IconButton>
+          <IconButton label={t("map.focusCore")} onClick={focusCore}>
+            <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round"><circle cx="8" cy="8" r="2.4" /><path d="M8 1v3M8 12v3M1 8h3M12 8h3" /></svg>
+          </IconButton>
+          <IconButton label={t("map.fit")} onClick={reset} disabled={!zoomed}>
+            <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3.5" width="12" height="9" rx="1.5" /></svg>
+          </IconButton>
+        </div>
+
+        {zoomed && (
+          <div className="num pointer-events-none absolute bottom-3 left-3 rounded-md bg-slate-950/70 px-2 py-1 text-[10px] font-bold text-slate-300">
+            ×{zoom.toFixed(1)}
+          </div>
+        )}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-xs text-slate-300">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 px-1 pt-1 text-xs text-slate-300">
         {[
           { c: MOOD.happy, l: t("map.happy") },
           { c: MOOD.stable, l: t("map.stable") },
@@ -341,7 +492,6 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover }: Pr
             {l}
           </span>
         ))}
-        <span className="ml-auto text-slate-500">{t("map.hoverHint")}</span>
         <span className="flex items-center gap-2 text-slate-400">
           <span className="relative flex h-2.5 w-2.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-slate-300 opacity-60" />
@@ -349,6 +499,18 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover }: Pr
           </span>
           {t("map.thinking")}
         </span>
+        <span className="ml-auto hidden text-slate-500 md:inline">{t("map.zoomHint")}</span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2.5 px-1 pb-1" aria-label={t("map.workplaces")}>
+        <span className="eyebrow mr-1">{t("map.workplaces")}</span>
+        {workplaces.map((w) => (
+          <span key={w.label} className="chip" style={{ borderColor: `${w.c}55` }}>
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: w.c }} />
+            {w.label}
+            <span className="num font-bold" style={{ color: w.c }}>{w.n}</span>
+          </span>
+        ))}
       </div>
     </section>
   )
@@ -359,7 +521,7 @@ function Tooltip({ slot }: { slot: Slot }) {
   const { t } = useI18n()
   const tw = 190
   const th = 50
-  const tx = Math.min(W - tw - 6, Math.max(6, x - tw / 2))
+  const tx = Math.min(CW - tw - 6, Math.max(6, x - tw / 2))
   const ty = y - th - 14 < 8 ? y + 16 : y - th - 14
   return (
     <g style={{ pointerEvents: "none" }} transform={`translate(${tx} ${ty})`}>

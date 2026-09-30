@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useI18n } from "../lib/i18n"
+import Select from "./Select"
 import { fetchSnapshots, startReplay, stopReplay } from "../lib/api"
 import type { DailySnapshot } from "../lib/types"
 
@@ -99,17 +100,19 @@ export default function ReplayPanel({ isRunning, replayMode, onReplayStart, onRe
           {snapshots.length === 0 ? (
             <p className="text-xs text-slate-500">{t("rep.empty")}</p>
           ) : (
-            <select
-              className="field focus-ring"
-              value={selectedDay ?? ""}
-              onChange={(e) => setSelectedDay(Number(e.target.value))}
-            >
-              {snapshots.map((s) => (
-                <option key={s.simulation_day} value={s.simulation_day}>
-                  {t("rep.day", { d: s.simulation_day, h: s.avg_happiness.toFixed(1), f: s.city_fund.toLocaleString("en-US", { maximumFractionDigits: 0 }) })}
-                </option>
-              ))}
-            </select>
+            <Select
+              ariaLabel={t("rep.title")}
+              value={selectedDay}
+              onChange={setSelectedDay}
+              options={snapshots.map((s) => ({
+                value: s.simulation_day,
+                label: t("rep.day", {
+                  d: s.simulation_day,
+                  h: s.avg_happiness.toFixed(1),
+                  f: s.city_fund.toLocaleString("en-US", { maximumFractionDigits: 0 }),
+                }),
+              }))}
+            />
           )}
 
           <p className="text-xs text-slate-500">{t("rep.note")}</p>

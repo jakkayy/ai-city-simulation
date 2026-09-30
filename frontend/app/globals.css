@@ -120,6 +120,37 @@ button:disabled {
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 211, 238, 0.18);
 }
 
+/* Thai line spacing: stacked vowel/tone marks need more room than Tailwind's Latin-tuned
+   defaults (~1.33). Unlayered rules win over Tailwind's layered utilities. */
+html[lang="th"] body,
+html[lang="th"] .text-xs,
+html[lang="th"] .text-sm,
+html[lang="th"] [class*="text-[1"] {
+  line-height: 1.7;
+}
+
+html[lang="th"] .text-base {
+  line-height: 1.65;
+}
+
+html[lang="th"] .text-lg,
+html[lang="th"] .text-xl {
+  line-height: 1.5;
+}
+
+html[lang="th"] .text-2xl {
+  line-height: 1.4;
+}
+
+html[lang="th"] .leading-snug,
+html[lang="th"] .leading-tight {
+  line-height: 1.55;
+}
+
+html[lang="th"] .leading-relaxed {
+  line-height: 1.85;
+}
+
 /* Thai has stacked vowel/tone marks — wide tracking and forced caps break them */
 html[lang="th"] .eyebrow,
 html[lang="th"] .th-plain {
@@ -231,6 +262,12 @@ html[lang="th"] .th-plain {
   transition: all 0.2s var(--ease-out);
 }
 
+/* Thai glyphs are taller: give chips more room so the text is not squeezed */
+html[lang="th"] .chip {
+  height: 2.1rem;
+  padding: 0 0.9rem;
+}
+
 .chip:hover {
   color: #fff;
   border-color: rgba(148, 163, 184, 0.4);
@@ -256,6 +293,17 @@ html[lang="th"] .th-plain {
 
 .field::placeholder {
   color: #5b6884;
+}
+
+.field-pill {
+  height: 1.7rem;
+  border-radius: 999px;
+  padding: 0 0.85rem;
+  font-size: 0.75rem;
+}
+
+html[lang="th"] .field-pill {
+  height: 2.1rem;
 }
 
 .field:hover {
@@ -376,11 +424,39 @@ html[lang="th"] .th-plain {
   animation: lane-flow 1.6s linear infinite;
 }
 
+.smoke {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: smoke 4s ease-out infinite;
+}
+
+.spin-slow {
+  animation: spin-slow 14s linear infinite;
+}
+
+.pulse-soft {
+  animation: pulse-soft 2.4s ease-in-out infinite;
+}
+
 .float-slow {
   animation: float 6s ease-in-out infinite;
 }
 
 /* ── keyframes ────────────────────────────────────────────────────── */
+
+@keyframes smoke {
+  0% { transform: translate(0, 0) scale(0.6); opacity: 0.5; }
+  100% { transform: translate(8px, -34px) scale(1.8); opacity: 0; }
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
 
 @keyframes drift {
   from { transform: translate3d(0, 0, 0) scale(1); }

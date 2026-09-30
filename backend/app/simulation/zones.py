@@ -66,6 +66,7 @@ def apply_migration_tick(
                     "but it is at capacity."
                 ),
                 "happiness_delta": -2,
+                "data": {"name": citizen.name, "to": target.value},
             })
             continue
 
@@ -86,6 +87,7 @@ def apply_migration_tick(
                 f"to Zone {target.value}."
             ),
             "happiness_delta": delta,
+            "data": {"name": citizen.name, "from": from_zone.value, "to": target.value},
         })
 
     return events

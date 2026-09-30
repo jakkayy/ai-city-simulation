@@ -108,7 +108,7 @@ export default function Guide({ open, onClose }: Props) {
 
           {tab === "map" && (
             <ul className="flex flex-col gap-3">
-              {[1, 2, 3, 4].map((n) => (
+              {[1, 2, 3, 4, 5].map((n) => (
                 <li key={n} className="flex gap-3">
                   <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-300" />
                   <span>{t(`guide.m.${n}`)}</span>

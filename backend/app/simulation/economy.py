@@ -84,6 +84,7 @@ def apply_economy_tick(citizens: list[Citizen], state: CityState) -> dict:
                     "event_type": "job_recovery",
                     "narrative": f"{citizen.name} found work as a {job.value.replace('_', ' ')}.",
                     "happiness_delta": 5,
+                    "data": {"name": citizen.name, "job": job.value},
                 })
 
         floor = savings_floor(citizen)
@@ -98,6 +99,7 @@ def apply_economy_tick(citizens: list[Citizen], state: CityState) -> dict:
                 "event_type": "bankruptcy",
                 "narrative": f"{citizen.name} went bankrupt and their debts were written off.",
                 "happiness_delta": -10,
+                "data": {"name": citizen.name},
             })
         # mark citizens who hit the savings floor so zone engine can act
         elif citizen.savings < floor:
@@ -137,5 +139,6 @@ def apply_job_market(citizens: list[Citizen]) -> list[dict]:
                 "event_type": "job_loss",
                 "narrative": f"{citizen.name} lost their job.",
                 "happiness_delta": -8,
+                "data": {"name": citizen.name},
             })
     return events
