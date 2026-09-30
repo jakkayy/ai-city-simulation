@@ -12,6 +12,7 @@ import EventFeed from "./EventFeed"
 import CitySummary from "./CitySummary"
 import Guide, { hasSeenGuide } from "./Guide"
 import Header from "./Header"
+import PolicyHistory from "./PolicyHistory"
 import StatCards from "./StatCards"
 import Toasts from "./Toasts"
 import ZoneStrip from "./ZoneStrip"
@@ -21,6 +22,7 @@ export default function Dashboard() {
   const { t } = useI18n()
   const [highlightId, setHighlightId] = useState<string | null>(null)
   const [guideOpen, setGuideOpen] = useState(false)
+  const [policyVersion, setPolicyVersion] = useState(0)
 
   // first visit: show the guide automatically
   useEffect(() => {
@@ -55,6 +57,7 @@ export default function Dashboard() {
       sim.toast("ok", t("pol.enacted", { name: res.name, day: res.enacted_day }))
       sim.dismissProposal()
       sim.refreshStatus()
+      setPolicyVersion((v) => v + 1)
     } catch (e) {
       sim.toast("error", e instanceof Error ? e.message : t("pol.failed"))
     }
@@ -77,8 +80,11 @@ export default function Dashboard() {
           onStart={sim.start}
           onStop={sim.stop}
           onStep={sim.step}
-          onPolicyEnacted={sim.refreshStatus}
-          onReplayChange={sim.refreshStatus}
+          onPolicyEnacted={() => { sim.refreshStatus(); setPolicyVersion((v) => v + 1) }}
+          onReplayChange={() => { sim.refreshStatus(); sim.reload() }}
+          speed={status?.tick_interval_seconds ?? 10}
+          onSpeed={sim.changeSpeed}
+          onReset={sim.reset}
           onOpenGuide={() => setGuideOpen(true)}
         />
 
@@ -118,8 +124,9 @@ export default function Dashboard() {
             <CitizenGrid citizens={citizens} highlightId={highlightId} onHover={setHighlightId} />
           </div>
 
-          <div className="xl:sticky xl:top-4 xl:self-start">
+          <div className="flex flex-col gap-4 xl:sticky xl:top-4 xl:self-start">
             <EventFeed events={sim.events} />
+            <PolicyHistory version={policyVersion} />
           </div>
         </div>
       </div>

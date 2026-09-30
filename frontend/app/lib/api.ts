@@ -49,7 +49,10 @@ export async function fetchSnapshots(): Promise<DailySnapshot[]> {
   return res.json()
 }
 
-export const startSim = () => post("/simulation/start", {})
+export const startSim = (tick_interval_seconds?: number) =>
+  post("/simulation/start", tick_interval_seconds ? { tick_interval_seconds } : {})
+export const setSpeed = (tick_interval_seconds: number) => post("/simulation/speed", { tick_interval_seconds })
+export const resetCity = () => post("/simulation/reset")
 export const stopSim = () => post("/simulation/stop")
 export const stepSim = () => post("/simulation/step")
 export const startReplay = (from_day: number) => post("/simulation/replay", { from_day })
@@ -57,6 +60,7 @@ export const stopReplay = () => post("/simulation/replay/stop")
 
 export async function fetchPolicies(): Promise<PolicyResponse[]> {
   const res = await fetch(`${BASE}/policies`)
+  if (!res.ok) throw new Error(await errorMessage(res))
   return res.json()
 }
 

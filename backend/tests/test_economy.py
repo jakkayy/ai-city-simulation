@@ -9,12 +9,11 @@ from app.simulation.constants import (
     DAILY_RENT,
     DAILY_LIVING_EXPENSES,
     TAX_CAP,
-    CITY_DAILY_OVERHEAD,
     SERVICE_QUALITY_RECOVERY,
     SERVICE_QUALITY_DECAY,
     SAVINGS_FLOOR_MONTHS,
 )
-from app.simulation.economy import apply_economy_tick, compute_citizen_daily
+from app.simulation.economy import apply_economy_tick, city_overhead, compute_citizen_daily
 from app.simulation.state import CityState
 
 
@@ -35,14 +34,14 @@ class TestComputeCitizenDaily:
     def test_net_positive_high_earner(self):
         c = _citizen(job_type=JobType.business_owner, zone=Zone.A)
         d = compute_citizen_daily(c, tax_rate=0.15)
-        # income 500 - tax 75 - rent 200 - living 100 = 125
-        assert d["net"] == pytest.approx(125.0)
+        # income 500 - tax 75 - rent 120 - living 75 = 230
+        assert d["net"] == pytest.approx(230.0)
 
     def test_net_negative_unemployed(self):
         c = _citizen(job_type=JobType.unemployed, zone=Zone.C)
         d = compute_citizen_daily(c, tax_rate=0.15)
-        # income 0 - tax 0 - rent 60 - living 40 = -100
-        assert d["net"] == pytest.approx(-100.0)
+        # income 0 - tax 0 - rent 45 - living 30 = -75
+        assert d["net"] == pytest.approx(-75.0)
 
     def test_tax_is_capped(self):
         c = _citizen(job_type=JobType.business_owner, zone=Zone.A)
@@ -54,11 +53,21 @@ class TestComputeCitizenDaily:
         d = compute_citizen_daily(c, tax_rate=0.20)
         assert d["tax"] == pytest.approx(200 * 0.20)
 
-    def test_laborer_zone_c_slight_loss(self):
+    def test_laborer_zone_c_small_surplus(self):
         c = _citizen(job_type=JobType.laborer, zone=Zone.C)
         d = compute_citizen_daily(c, tax_rate=0.15)
-        # income 100 - tax 15 - rent 60 - living 40 = -15
-        assert d["net"] == pytest.approx(-15.0)
+        # income 100 - tax 15 - rent 45 - living 30 = +10
+        assert d["net"] == pytest.approx(10.0)
+
+    def test_laborer_slides_when_taxes_rise(self):
+        c = _citizen(job_type=JobType.laborer, zone=Zone.C)
+        assert compute_citizen_daily(c, tax_rate=0.30)["net"] < 0
+
+    def test_recession_lowers_income(self):
+        c = _citizen(job_type=JobType.teacher, zone=Zone.B)
+        normal = compute_citizen_daily(c, tax_rate=0.15)
+        slump = compute_citizen_daily(c, tax_rate=0.15, income_modifier=0.8)
+        assert slump["income"] == pytest.approx(normal["income"] * 0.8)
 
 
 # ── apply_economy_tick ────────────────────────────────────────────────────
@@ -68,15 +77,15 @@ class TestApplyEconomyTick:
         state = CityState(city_fund=10_000, service_quality=70, tax_rate=0.15)
         c = _citizen(job_type=JobType.teacher, zone=Zone.B, savings=500.0)
         apply_economy_tick([c], state)
-        # net = 200 - 30 - 120 - 60 = -10
-        assert c.savings == pytest.approx(490.0)
+        # net = 200 - 30 - 70 - 40 = +60
+        assert c.savings == pytest.approx(560.0)
 
     def test_city_fund_updated(self):
         state = CityState(city_fund=10_000, service_quality=70, tax_rate=0.15)
         c = _citizen(job_type=JobType.teacher, zone=Zone.B)
         result = apply_economy_tick([c], state)
-        # tax = 200 * 0.15 = 30; fund = 10000 + 30 - 500 = 9530
-        assert result["city_fund"] == pytest.approx(9530.0)
+        # tax = 200 * 0.15 = 30; fund = 10000 + 30 - overhead(70)
+        assert result["city_fund"] == pytest.approx(10_000 + 30 - city_overhead(70))
 
     def test_service_quality_recovers_when_solvent(self):
         state = CityState(city_fund=5000, service_quality=50.0, tax_rate=0.15)

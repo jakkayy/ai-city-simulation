@@ -7,13 +7,18 @@ const KIND: Record<string, { icon: string; label: string }> = {
   migration: { icon: "M4 12h13m0 0l-5-5m5 5l-5 5", label: "feed.move" },
   migration_waitlisted: { icon: "M12 7v5l3 2M12 21a9 9 0 100-18 9 9 0 000 18z", label: "feed.waitlist" },
   job_recovery: { icon: "M5 13l4 4L19 7", label: "feed.job" },
+  job_loss: { icon: "M6 18L18 6M6 6l12 12", label: "feed.jobloss" },
+  bankruptcy: { icon: "M12 8c-2 0-3 1-3 2s1 2 3 2 3 1 3 2-1 2-3 2m0-10v12", label: "feed.bankrupt" },
+  city_event: { icon: "M13 10V3L4 14h7v7l9-11h-7z", label: "feed.city" },
+  policy_reaction: { icon: "M8 10h.01M12 10h.01M16 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z", label: "feed.reaction" },
+  fallback_reaction: { icon: "M8 10h.01M12 10h.01M16 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z", label: "feed.reaction" },
 }
 const FALLBACK = { icon: "M12 8v5m0 3h.01M12 21a9 9 0 100-18 9 9 0 000 18z", label: "feed.event" }
 
 export default function EventFeed({ events }: { events: EventItem[] }) {
   const { t } = useI18n()
   return (
-    <aside className="panel flex max-h-[calc(100vh-2rem)] min-h-[20rem] flex-col rounded-2xl p-4">
+    <aside className="panel flex max-h-[calc(100vh-22rem)] min-h-[20rem] flex-col rounded-2xl p-4">
       <div className="mb-3 flex items-end justify-between">
         <div>
           <h2 className="text-base font-semibold text-white">{t("feed.title")}</h2>

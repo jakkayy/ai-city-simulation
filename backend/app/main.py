@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 import socketio
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -12,28 +13,11 @@ from app.db.seed import seed_citizens
 from app.models.citizen import Citizen
 from app.simulation.gateway import build_gateway
 from app.simulation.loop import restore_from_snapshot, run_tick, set_socket_server
+from app.simulation.state import city_state
 import app.simulation.gateway as _gateway_module
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
-
-app = FastAPI(title="AI City Simulation API")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
-socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
-
-app.include_router(citizens.router, prefix="/api")
-app.include_router(policies.router, prefix="/api")
-app.include_router(gateway_status.router, prefix="/api")
-app.include_router(simulation.router, prefix="/api")
-app.include_router(agents.router, prefix="/api")
 
 _scheduler = AsyncIOScheduler()
 
@@ -42,8 +26,8 @@ def get_scheduler() -> AsyncIOScheduler:
     return _scheduler
 
 
-@app.on_event("startup")
-async def startup():
+@asynccontextmanager
+async def lifespan(_: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -61,13 +45,33 @@ async def startup():
     set_socket_server(sio)
     await restore_from_snapshot()
 
-    _scheduler.add_job(run_tick, "interval", seconds=10, id="tick", max_instances=1)
+    _scheduler.add_job(
+        run_tick, "interval", seconds=city_state.tick_interval_seconds, id="tick", max_instances=1
+    )
     _scheduler.start()
 
+    yield
 
-@app.on_event("shutdown")
-async def shutdown():
     _scheduler.shutdown(wait=False)
+
+
+app = FastAPI(title="AI City Simulation API", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins="*")
+socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
+
+app.include_router(citizens.router, prefix="/api")
+app.include_router(policies.router, prefix="/api")
+app.include_router(gateway_status.router, prefix="/api")
+app.include_router(simulation.router, prefix="/api")
+app.include_router(agents.router, prefix="/api")
 
 
 @app.get("/api/health")

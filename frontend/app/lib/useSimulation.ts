@@ -7,6 +7,8 @@ import {
   fetchCitizens,
   fetchSnapshots,
   fetchStatus,
+  resetCity,
+  setSpeed,
   startSim,
   stepSim,
   stopSim,
@@ -54,6 +56,7 @@ export function useSimulation() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [busy, setBusy] = useState(false)
   const uid = useRef(0)
+  const speedRef = useRef<number | undefined>(undefined)
 
   const toast = useCallback((kind: Toast["kind"], text: string) => {
     const id = ++uid.current
@@ -66,9 +69,8 @@ export function useSimulation() {
     [],
   )
 
-  // initial state over REST so the page is populated before the first tick
-  useEffect(() => {
-    refreshStatus()
+  // citizens + chart history over REST (page start, after a replay, after a reset)
+  const reload = useCallback(() => {
     fetchCitizens().then(setCitizens).catch(() => {})
     fetchSnapshots()
       .then((snaps) =>
@@ -82,9 +84,15 @@ export function useSimulation() {
         ),
       )
       .catch(() => {})
+  }, [])
+
+  // initial state over REST so the page is populated before the first tick
+  useEffect(() => {
+    refreshStatus()
+    reload()
     const poll = setInterval(refreshStatus, STATUS_POLL_MS)
     return () => clearInterval(poll)
-  }, [refreshStatus])
+  }, [refreshStatus, reload])
 
   useEffect(() => {
     const socket = getSocket()
@@ -109,16 +117,27 @@ export function useSimulation() {
     }
     const onProposal = (data: CityManagerProposal) => setProposal(data)
     const onAdvisor = (data: AdvisorMessage) => setAdvisorMsg(data)
+    const onReset = () => {
+      setTick(null)
+      setEvents([])
+      setHistory([])
+      setProposal(null)
+      setAdvisorMsg(null)
+      reload()
+      refreshStatus()
+    }
 
     socket.on("tick", onTick)
     socket.on("city_manager_proposal", onProposal)
     socket.on("advisor_message", onAdvisor)
+    socket.on("city_reset", onReset)
     return () => {
       socket.off("tick", onTick)
       socket.off("city_manager_proposal", onProposal)
       socket.off("advisor_message", onAdvisor)
+      socket.off("city_reset", onReset)
     }
-  }, [])
+  }, [reload, refreshStatus])
 
   const act = useCallback(
     async (fn: () => Promise<unknown>, okText?: string) => {
@@ -136,9 +155,18 @@ export function useSimulation() {
     [refreshStatus, toast, t],
   )
 
-  const start = useCallback(() => act(startSim, t("toast.started")), [act, t])
+  const start = useCallback(() => act(() => startSim(speedRef.current), t("toast.started")), [act, t])
   const stop = useCallback(() => act(stopSim, t("toast.paused")), [act, t])
   const step = useCallback(() => act(stepSim), [act])
+  const reset = useCallback(() => act(resetCity, t("toast.reset")), [act, t])
+  const changeSpeed = useCallback(
+    (seconds: number) => {
+      speedRef.current = seconds
+      setStatus((s) => (s ? { ...s, tick_interval_seconds: seconds } : s))
+      return act(() => setSpeed(seconds))
+    },
+    [act],
+  )
 
   return {
     tick,
@@ -153,9 +181,12 @@ export function useSimulation() {
     busy,
     toast,
     refreshStatus,
+    reload,
     start,
     stop,
     step,
+    reset,
+    changeSpeed,
     dismissProposal: () => setProposal(null),
     dismissAdvisor: () => setAdvisorMsg(null),
   }
