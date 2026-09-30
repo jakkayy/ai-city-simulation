@@ -1,5 +1,6 @@
 "use client"
 
+import { eventText } from "../lib/events"
 import { useI18n } from "../lib/i18n"
 import type { EventItem } from "../lib/types"
 
@@ -48,7 +49,7 @@ export default function EventFeed({ events }: { events: EventItem[] }) {
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d={k.icon} /></svg>
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs leading-relaxed text-slate-200">{ev.narrative}</p>
+                  <p className="text-xs leading-relaxed text-slate-200">{eventText(ev, t)}</p>
                   <div className="mt-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                     <span>{t("feed.day", { n: ev.day })}</span>
                     <span>·</span>
