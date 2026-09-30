@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { getSocket } from "./socket"
+import { useI18n } from "./i18n"
 import {
   fetchCitizens,
   fetchSnapshots,
@@ -41,6 +42,7 @@ function subscribeConnection(notify: () => void) {
 }
 
 export function useSimulation() {
+  const { t } = useI18n()
   const [tick, setTick] = useState<TickData | null>(null)
   const [status, setStatus] = useState<SimStatus | null>(null)
   const [citizens, setCitizens] = useState<Citizen[]>([])
@@ -125,17 +127,17 @@ export function useSimulation() {
         await fn()
         if (okText) toast("ok", okText)
       } catch (e) {
-        toast("error", e instanceof Error ? e.message : "Request failed")
+        toast("error", e instanceof Error ? e.message : t("toast.failed"))
       } finally {
         await refreshStatus()
         setBusy(false)
       }
     },
-    [refreshStatus, toast],
+    [refreshStatus, toast, t],
   )
 
-  const start = useCallback(() => act(startSim, "Simulation started"), [act])
-  const stop = useCallback(() => act(stopSim, "Simulation paused"), [act])
+  const start = useCallback(() => act(startSim, t("toast.started")), [act, t])
+  const stop = useCallback(() => act(stopSim, t("toast.paused")), [act, t])
   const step = useCallback(() => act(stepSim), [act])
 
   return {

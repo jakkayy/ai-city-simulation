@@ -1,6 +1,8 @@
 "use client"
 
+import { useI18n } from "../lib/i18n"
 import AnimatedNumber from "./AnimatedNumber"
+import Hint from "./Hint"
 import type { Citizen } from "../lib/types"
 import { moodColor, ZONE_KEYS, ZONE_META } from "../lib/mood"
 
@@ -10,6 +12,7 @@ interface Props {
 }
 
 export default function ZoneStrip({ citizens, pops }: Props) {
+  const { t } = useI18n()
   return (
     <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
       {ZONE_KEYS.map((z, i) => {
@@ -28,15 +31,18 @@ export default function ZoneStrip({ citizens, pops }: Props) {
             <div className="absolute inset-y-0 left-0 w-1" style={{ background: meta.color, boxShadow: `0 0 18px ${meta.color}` }} />
             <div className="flex items-center justify-between gap-3 pl-2">
               <div>
-                <div className="eyebrow" style={{ color: meta.color }}>{meta.name}</div>
+                <div className="eyebrow flex items-center gap-1.5" style={{ color: meta.color }}>
+                  {t("zone.name", { z })} · {t(`zone.${z}.sub`)}
+                  <Hint text={t("zone.hint")} />
+                </div>
                 <div className="mt-1 flex items-baseline gap-1.5">
                   <AnimatedNumber value={pops[z]} className="num text-2xl font-bold text-white" />
                   <span className="num text-xs text-slate-500">/ {meta.capacity}</span>
-                  {full && <span className="ml-1 rounded bg-rose-400/15 px-1.5 py-0.5 text-[10px] font-bold uppercase text-rose-300">full</span>}
+                  {full && <span className="ml-1 rounded bg-rose-400/15 px-1.5 py-0.5 text-[10px] font-bold uppercase text-rose-300">{t("zone.full")}</span>}
                 </div>
               </div>
               <div className="text-right">
-                <div className="eyebrow">Mood</div>
+                <div className="eyebrow">{t("zone.mood")}</div>
                 <div className="num mt-1 text-lg font-bold" style={{ color: members.length ? moodColor(avg) : "#64748b" }}>
                   {members.length ? avg.toFixed(0) : "–"}
                 </div>

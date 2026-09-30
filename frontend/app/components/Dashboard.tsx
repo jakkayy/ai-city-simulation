@@ -1,13 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { enactPolicy } from "../lib/api"
+import { useI18n } from "../lib/i18n"
 import { useSimulation } from "../lib/useSimulation"
 import type { CityManagerProposal, PolicyType } from "../lib/types"
 import Alerts from "./Alerts"
 import CitizenGrid from "./CitizenGrid"
 import CityMap from "./CityMap"
 import EventFeed from "./EventFeed"
+import CitySummary from "./CitySummary"
+import Guide, { hasSeenGuide } from "./Guide"
 import Header from "./Header"
 import StatCards from "./StatCards"
 import Toasts from "./Toasts"
@@ -15,7 +18,15 @@ import ZoneStrip from "./ZoneStrip"
 
 export default function Dashboard() {
   const sim = useSimulation()
+  const { t } = useI18n()
   const [highlightId, setHighlightId] = useState<string | null>(null)
+  const [guideOpen, setGuideOpen] = useState(false)
+
+  // first visit: show the guide automatically
+  useEffect(() => {
+    const id = setTimeout(() => { if (!hasSeenGuide()) setGuideOpen(true) }, 500)
+    return () => clearTimeout(id)
+  }, [])
 
   const { tick, status, citizens } = sim
   const day = tick?.day ?? status?.simulation_day ?? 0
@@ -41,11 +52,11 @@ export default function Dashboard() {
     const label = p.policy_type.replace(/_/g, " ")
     try {
       const res = await enactPolicy(p.policy_type as PolicyType, `City Manager: ${label}`, params, p.reasoning ?? p.reason)
-      sim.toast("ok", `Enacted "${res.name}" on day ${res.enacted_day}`)
+      sim.toast("ok", t("pol.enacted", { name: res.name, day: res.enacted_day }))
       sim.dismissProposal()
       sim.refreshStatus()
     } catch (e) {
-      sim.toast("error", e instanceof Error ? e.message : "Failed to enact policy")
+      sim.toast("error", e instanceof Error ? e.message : t("pol.failed"))
     }
   }
 
@@ -68,6 +79,14 @@ export default function Dashboard() {
           onStep={sim.step}
           onPolicyEnacted={sim.refreshStatus}
           onReplayChange={sim.refreshStatus}
+          onOpenGuide={() => setGuideOpen(true)}
+        />
+
+        <CitySummary
+          started={isRunning || day > 0}
+          happiness={avgHappiness}
+          fund={cityFund}
+          crisis={tick?.crisis_level ?? null}
         />
 
         <Alerts
@@ -106,6 +125,7 @@ export default function Dashboard() {
       </div>
 
       <Toasts toasts={sim.toasts} />
+      <Guide open={guideOpen} onClose={() => setGuideOpen(false)} />
     </main>
   )
 }

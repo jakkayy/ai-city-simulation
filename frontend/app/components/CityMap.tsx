@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useI18n } from "../lib/i18n"
 import type { Citizen } from "../lib/types"
 import { moodColor, MOOD, ZONE_KEYS, ZONE_META, type ZoneKey } from "../lib/mood"
 
@@ -90,6 +91,7 @@ function Defs() {
 }
 
 function Ground() {
+  const { t } = useI18n()
   return (
     <g>
       <rect width={W} height={H} fill="#070d19" />
@@ -105,14 +107,14 @@ function Ground() {
             <circle cx={x - 2} cy={y - 2} r={4} fill="#22c55e" opacity={0.35} />
           </g>
         ))}
-        <text x={140} y={340} textAnchor="middle" fontSize={8} fill="#6ee7b7" fontWeight={700} letterSpacing={1.2}>PARK</text>
+        <text x={140} y={340} textAnchor="middle" fontSize={8} fill="#6ee7b7" fontWeight={700} letterSpacing={1.2}>{t("map.park")}</text>
       </g>
 
       {/* services */}
       <g>
         <rect x={568} y={326} width={104} height={72} rx={14} fill="#10203a" stroke="#3b6ea8" strokeOpacity={0.55} />
         <path d="M620 346v24M608 358h24" stroke="#7dd3fc" strokeWidth={4} strokeLinecap="round" opacity={0.75} />
-        <text x={620} y={390} textAnchor="middle" fontSize={8} fill="#93c5fd" fontWeight={700} letterSpacing={1.2}>SERVICES</text>
+        <text x={620} y={390} textAnchor="middle" fontSize={8} fill="#93c5fd" fontWeight={700} letterSpacing={1.2}>{t("map.services")}</text>
       </g>
     </g>
   )
@@ -176,6 +178,7 @@ function Traffic() {
 }
 
 function ZonePanel({ zone, pop, avg }: { zone: ZoneKey; pop: number; avg: number | null }) {
+  const { t } = useI18n()
   const L = LAYOUT[zone]
   const meta = ZONE_META[zone]
   const fill = Math.min(1, pop / meta.capacity)
@@ -188,8 +191,8 @@ function ZonePanel({ zone, pop, avg }: { zone: ZoneKey; pop: number; avg: number
       <rect x={L.x} y={L.y} width={L.w} height={L.h} rx={14} fill={`url(#zone-${zone})`} stroke={meta.color} strokeOpacity={0.75} strokeWidth={1.5} />
 
       {/* header */}
-      <text x={L.x + 16} y={L.y + 22} fontSize={13} fill={meta.color} fontWeight={800}>{meta.name}</text>
-      <text x={L.x + 16} y={L.y + 36} fontSize={8} fill="#8fa0bb" fontWeight={600} letterSpacing={0.8}>{meta.sub.toUpperCase()}</text>
+      <text x={L.x + 16} y={L.y + 22} fontSize={13} fill={meta.color} fontWeight={800}>{t("zone.name", { z: zone })}</text>
+      <text x={L.x + 16} y={L.y + 36} fontSize={8} fill="#8fa0bb" fontWeight={600} letterSpacing={0.4}>{t(`zone.${zone}.sub`)}</text>
       <text x={L.x + L.w - 16} y={L.y + 22} fontSize={11} fill="#e2e8f0" textAnchor="end" fontWeight={700} fontFamily="var(--font-geist-mono), monospace">
         {pop}/{meta.capacity}
       </text>
@@ -242,6 +245,7 @@ interface Props {
 }
 
 export default function CityMap({ citizens, zonePops, highlightId, onHover }: Props) {
+  const { t } = useI18n()
   const [glow, setGlow] = useState(true)
   const [localHover, setLocalHover] = useState<string | null>(null)
   const slots = useMemo(() => layoutDots(citizens), [citizens])
@@ -267,11 +271,11 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover }: Pr
     <section className="panel fade-up overflow-hidden rounded-2xl p-4" style={{ animationDelay: "300ms" }}>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3 px-1">
         <div>
-          <h2 className="text-base font-semibold text-white">City Map</h2>
-          <p className="text-xs text-slate-400">Live zoning, traffic and citizen sentiment — dots glide as citizens move</p>
+          <h2 className="text-base font-semibold text-white">{t("map.title")}</h2>
+          <p className="text-xs text-slate-400">{t("map.sub")}</p>
         </div>
         <button className="chip focus-ring" data-active={glow} onClick={() => setGlow((g) => !g)} aria-pressed={glow}>
-          Sentiment glow
+          {t("map.glow")}
         </button>
       </div>
 
@@ -327,21 +331,22 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover }: Pr
 
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-xs text-slate-300">
         {[
-          { c: MOOD.happy, l: "Happy  ≥ 60" },
-          { c: MOOD.stable, l: "Stable  35–60" },
-          { c: MOOD.risk, l: "At risk  < 35" },
+          { c: MOOD.happy, l: t("map.happy") },
+          { c: MOOD.stable, l: t("map.stable") },
+          { c: MOOD.risk, l: t("map.risk") },
         ].map(({ c, l }) => (
           <span key={l} className="flex items-center gap-2 font-medium">
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: c, boxShadow: `0 0 10px ${c}` }} />
             {l}
           </span>
         ))}
+        <span className="ml-auto text-slate-500">{t("map.hoverHint")}</span>
         <span className="flex items-center gap-2 text-slate-400">
           <span className="relative flex h-2.5 w-2.5">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-slate-300 opacity-60" />
             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-slate-400" />
           </span>
-          thinking (waiting for AI)
+          {t("map.thinking")}
         </span>
       </div>
     </section>
