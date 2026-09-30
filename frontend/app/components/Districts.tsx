@@ -77,10 +77,13 @@ export function World() {
   )
 }
 
-function Badge({ x, y, label, value, color }: { x: number; y: number; label: string; value: string | number; color: string }) {
-  const w = 96
+// A label + value pill. `tip` is shown on hover (native SVG tooltip) and read by screen readers.
+function Badge({ x, y, label, value, color, tip }: { x: number; y: number; label: string; value: string; color: string; tip?: string }) {
+  // width follows the text so a unit ("6 คน") or a longer value never overflows the pill
+  const w = Math.max(96, 26 + label.length * 6.4 + value.length * 6.6)
   return (
-    <g transform={`translate(${x} ${y})`} style={{ pointerEvents: "none" }}>
+    <g transform={`translate(${x} ${y})`} role={tip ? "img" : undefined} aria-label={tip}>
+      {tip && <title>{tip}</title>}
       <rect width={w} height={18} rx={9} fill="#060b16" stroke={color} strokeOpacity={0.7} opacity={0.94} />
       <text x={9} y={12.5} fontSize={9} fill="#cbd5e1" fontWeight={700}>{label}</text>
       <text x={w - 9} y={12.5} fontSize={10} textAnchor="end" fill={color} fontWeight={800} fontFamily="var(--font-geist-mono), monospace">{value}</text>
@@ -114,7 +117,7 @@ export function Districts({ counts, serviceQuality }: { counts: WorkCounts; serv
     <g>
       {/* ── school (teachers) ── */}
       <g>
-        <Plot x={88} y={84} w={92} h={96} color="#60a5fa" />
+        <Plot x={88} y={84} w={118} h={96} color="#60a5fa" />
         <rect x={98} y={112} width={54} height={32} rx={3} fill="#1e3a6a" stroke="#60a5fa" strokeOpacity={0.6} />
         <path d="M94 112 L125 98 L156 112 Z" fill="#2c4f8f" />
         {[0, 1, 2, 3].map((i) => (
@@ -123,12 +126,12 @@ export function Districts({ counts, serviceQuality }: { counts: WorkCounts; serv
         <line x1={160} y1={150} x2={160} y2={112} stroke="#94a3b8" strokeWidth={1.4} />
         <path d="M160 112 L172 116 L160 120 Z" fill="#fb7185" />
         <ellipse cx={126} cy={162} rx={28} ry={9} fill="none" stroke="#60a5fa" strokeOpacity={0.4} />
-        <Badge x={90} y={90} label={t("map.school")} value={counts.teacher} color="#60a5fa" />
+        <Badge x={90} y={90} label={t("map.school")} value={t("map.people", { n: counts.teacher })} color="#60a5fa" tip={t("map.tip.school", { n: counts.teacher })} />
       </g>
 
       {/* ── hospital (shows service quality) ── */}
       <g>
-        <Plot x={88} y={196} w={92} h={98} color="#fb7185" />
+        <Plot x={88} y={196} w={118} h={98} color="#fb7185" />
         <rect x={104} y={230} width={60} height={48} rx={4} fill="#1f2a44" stroke="#fb7185" strokeOpacity={0.5} />
         <g className="pulse-soft" style={{ transformBox: "fill-box", transformOrigin: "center" }}>
           <rect x={128} y={238} width={12} height={32} rx={2} fill="#fb7185" />
@@ -136,12 +139,13 @@ export function Districts({ counts, serviceQuality }: { counts: WorkCounts; serv
         </g>
         <circle cx={166} cy={236} r={7} fill="none" stroke="#fda4af" strokeOpacity={0.5} strokeDasharray="2 3" />
         <text x={166} y={239} textAnchor="middle" fontSize={8} fill="#fda4af" fontWeight={800}>H</text>
-        <Badge x={90} y={202} label={t("map.hospital")} value={serviceQuality.toFixed(0)} color="#fb7185" />
+        <text x={134} y={289} textAnchor="middle" fontSize={8.5} fill="#fda4af" opacity={0.9} fontWeight={600}>{t("map.qualityLabel")}</text>
+        <Badge x={90} y={202} label={t("map.hospital")} value={serviceQuality.toFixed(0)} color="#fb7185" tip={t("map.tip.hospital", { n: serviceQuality.toFixed(0) })} />
       </g>
 
       {/* ── harbour ── */}
       <g>
-        <Plot x={88} y={398} w={92} h={150} color="#38bdf8" />
+        <Plot x={88} y={398} w={118} h={150} color="#38bdf8" />
         <rect x={56} y={452} width={42} height={8} fill="#334155" />
         <rect x={56} y={486} width={42} height={8} fill="#334155" />
         {[0, 1, 2].map((r) =>
@@ -171,7 +175,7 @@ export function Districts({ counts, serviceQuality }: { counts: WorkCounts; serv
           </g>
         ))}
         <line className="lane" x1={940} y1={250} x2={1096} y2={250} stroke="#f97316" strokeOpacity={0.4} strokeWidth={2} strokeDasharray="6 8" />
-        <Badge x={932} y={96} label={t("map.factory")} value={counts.laborer} color="#f97316" />
+        <Badge x={932} y={96} label={t("map.factory")} value={t("map.people", { n: counts.laborer })} color="#f97316" tip={t("map.tip.factory", { n: counts.laborer })} />
       </g>
 
       {/* ── farmland (farmers) ── */}
@@ -189,7 +193,7 @@ export function Districts({ counts, serviceQuality }: { counts: WorkCounts; serv
           </g>
           <circle r={3} fill="#94a3b8" />
         </g>
-        <Badge x={932} y={404} label={t("map.farm")} value={counts.farmer} color="#a3e635" />
+        <Badge x={932} y={404} label={t("map.farm")} value={t("map.people", { n: counts.farmer })} color="#a3e635" tip={t("map.tip.farm", { n: counts.farmer })} />
       </g>
     </g>
   )
