@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { BADGE_MAX_W, CORE_BORDER, LEFT_X, PLOT_W, RIGHT_X, SLOTS, WORLD } from "../mapLayout"
+import { BADGE_MAX_W, CORE, CORE_BORDER, LEFT_X, PARK_BOX, PLOT_W, RIGHT_X, SERVICES_BOX, SLOTS, WORLD } from "../mapLayout"
 
 describe("map layout", () => {
   it("is mirrored left to right", () => {
@@ -31,5 +31,21 @@ describe("map layout", () => {
 
   it("lets badges fit inside a plot", () => {
     expect(BADGE_MAX_W).toBeLessThan(PLOT_W)
+  })
+
+  it("centres the park and services boxes in their strips", () => {
+    // horizontally: same gap on both sides of each box
+    const parkLeft = PARK_BOX.x - CORE.borderLeft
+    const parkRight = CORE.accessLeft - (PARK_BOX.x + PARK_BOX.w)
+    expect(parkLeft).toBe(parkRight)
+    const svcLeft = SERVICES_BOX.x - CORE.accessRight
+    const svcRight = CORE.borderRight - (SERVICES_BOX.x + SERVICES_BOX.w)
+    expect(svcLeft).toBe(svcRight)
+    // vertically: same gap above (main road) and below (border)
+    expect(PARK_BOX.y - CORE.roadBottom).toBe(CORE.borderBottom - (PARK_BOX.y + PARK_BOX.h))
+    // and the two boxes mirror each other across the core
+    expect(PARK_BOX.x - CORE.borderLeft).toBe(CORE.borderRight - (SERVICES_BOX.x + SERVICES_BOX.w))
+    expect(PARK_BOX.y).toBe(SERVICES_BOX.y)
+    expect(PARK_BOX.w).toBe(SERVICES_BOX.w)
   })
 })

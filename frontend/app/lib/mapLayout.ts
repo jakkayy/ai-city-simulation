@@ -25,3 +25,28 @@ export type SlotName = keyof typeof SLOTS
 
 // widest a badge may be inside a plot
 export const BADGE_MAX_W = PLOT_W - 4
+
+// ── core (local 760 x 500 space) ──────────────────────────────────────────
+// The park and the services box sit in the free strips either side of Zone C, centred
+// horizontally between the core border and the Zone C access road, and vertically between
+// the main road and the bottom border.
+export const CORE = {
+  borderLeft: 34,
+  borderRight: 726,
+  borderTop: 30,
+  borderBottom: 474,
+  roadBottom: 292,
+  accessLeft: 198,   // left edge of the left Zone C access road
+  accessRight: 562,  // right edge of the right Zone C access road
+}
+
+export const SIDE_BOX = { w: 112, h: 72 }
+
+function centred(from: number, to: number, size: number) {
+  return from + (to - from - size) / 2
+}
+
+const boxY = centred(CORE.roadBottom, CORE.borderBottom, SIDE_BOX.h)
+
+export const PARK_BOX = { x: centred(CORE.borderLeft, CORE.accessLeft, SIDE_BOX.w), y: boxY, ...SIDE_BOX }
+export const SERVICES_BOX = { x: centred(CORE.accessRight, CORE.borderRight, SIDE_BOX.w), y: boxY, ...SIDE_BOX }

@@ -6,6 +6,7 @@ import Avatar from "./Avatar"
 import { CORE_OFFSET, Districts, World, WORLD, type WorkCounts } from "./Districts"
 import { useMapView } from "../lib/useMapView"
 import { viewAround } from "../lib/mapView"
+import { PARK_BOX, SERVICES_BOX } from "../lib/mapLayout"
 import type { Citizen } from "../lib/types"
 import { moodColor, MOOD, ZONE_KEYS, ZONE_META, type ZoneKey } from "../lib/mood"
 
@@ -101,22 +102,22 @@ function Ground() {
       <rect x={34} y={30} width={692} height={444} rx={18} fill="none" stroke="#22324d" strokeWidth={1} />
 
       {/* park */}
-      <g>
-        <rect x={84} y={326} width={112} height={72} rx={14} fill="#0c2a1f" stroke="#1f6b4c" strokeOpacity={0.6} />
-        {[[104, 350], [124, 368], [150, 346], [172, 372], [140, 384]].map(([x, y], i) => (
+      <g transform={`translate(${PARK_BOX.x} ${PARK_BOX.y})`}>
+        <rect width={PARK_BOX.w} height={PARK_BOX.h} rx={14} fill="#0c2a1f" stroke="#1f6b4c" strokeOpacity={0.6} />
+        {[[22, 30], [42, 48], [68, 26], [90, 52], [58, 58]].map(([x, y], i) => (
           <g key={i}>
             <circle cx={x} cy={y} r={9} fill="#14532d" opacity={0.85} />
             <circle cx={x - 2} cy={y - 2} r={4} fill="#22c55e" opacity={0.35} />
           </g>
         ))}
-        <text x={140} y={340} textAnchor="middle" fontSize={8} fill="#6ee7b7" fontWeight={700} letterSpacing={1.2}>{t("map.park")}</text>
+        <text x={PARK_BOX.w / 2} y={15} textAnchor="middle" fontSize={8} fill="#6ee7b7" fontWeight={700} letterSpacing={1.2}>{t("map.park")}</text>
       </g>
 
       {/* services */}
-      <g>
-        <rect x={568} y={326} width={104} height={72} rx={14} fill="#10203a" stroke="#3b6ea8" strokeOpacity={0.55} />
-        <path d="M620 346v24M608 358h24" stroke="#7dd3fc" strokeWidth={4} strokeLinecap="round" opacity={0.75} />
-        <text x={620} y={390} textAnchor="middle" fontSize={8} fill="#93c5fd" fontWeight={700} letterSpacing={1.2}>{t("map.services")}</text>
+      <g transform={`translate(${SERVICES_BOX.x} ${SERVICES_BOX.y})`}>
+        <rect width={SERVICES_BOX.w} height={SERVICES_BOX.h} rx={14} fill="#10203a" stroke="#3b6ea8" strokeOpacity={0.55} />
+        <path d={`M${SERVICES_BOX.w / 2} 16v24M${SERVICES_BOX.w / 2 - 12} 28h24`} stroke="#7dd3fc" strokeWidth={4} strokeLinecap="round" opacity={0.75} />
+        <text x={SERVICES_BOX.w / 2} y={60} textAnchor="middle" fontSize={8} fill="#93c5fd" fontWeight={700} letterSpacing={1.2}>{t("map.services")}</text>
       </g>
     </g>
   )
