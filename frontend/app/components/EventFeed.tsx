@@ -1,21 +1,23 @@
 "use client"
 
+import { useI18n } from "../lib/i18n"
 import type { EventItem } from "../lib/types"
 
 const KIND: Record<string, { icon: string; label: string }> = {
-  migration: { icon: "M4 12h13m0 0l-5-5m5 5l-5 5", label: "Move" },
-  migration_waitlisted: { icon: "M12 7v5l3 2M12 21a9 9 0 100-18 9 9 0 000 18z", label: "Waitlist" },
-  job_recovery: { icon: "M5 13l4 4L19 7", label: "Job" },
+  migration: { icon: "M4 12h13m0 0l-5-5m5 5l-5 5", label: "feed.move" },
+  migration_waitlisted: { icon: "M12 7v5l3 2M12 21a9 9 0 100-18 9 9 0 000 18z", label: "feed.waitlist" },
+  job_recovery: { icon: "M5 13l4 4L19 7", label: "feed.job" },
 }
-const FALLBACK = { icon: "M12 8v5m0 3h.01M12 21a9 9 0 100-18 9 9 0 000 18z", label: "Event" }
+const FALLBACK = { icon: "M12 8v5m0 3h.01M12 21a9 9 0 100-18 9 9 0 000 18z", label: "feed.event" }
 
 export default function EventFeed({ events }: { events: EventItem[] }) {
+  const { t } = useI18n()
   return (
     <aside className="panel flex max-h-[calc(100vh-2rem)] min-h-[20rem] flex-col rounded-2xl p-4">
       <div className="mb-3 flex items-end justify-between">
         <div>
-          <h2 className="text-base font-semibold text-white">Live Feed</h2>
-          <p className="text-xs text-slate-400">{events.length ? `${events.length} latest changes` : "Waiting for activity"}</p>
+          <h2 className="text-base font-semibold text-white">{t("feed.title")}</h2>
+          <p className="text-xs text-slate-400">{events.length ? t("feed.count", { n: events.length }) : t("feed.waiting")}</p>
         </div>
         <span className="live-dot text-cyan-300" />
       </div>
@@ -25,7 +27,7 @@ export default function EventFeed({ events }: { events: EventItem[] }) {
           <div className="flex flex-1 flex-col items-center justify-center gap-3 py-10 text-center text-sm text-slate-500">
             <div className="shimmer h-2 w-24 rounded-full" />
             <div className="shimmer h-2 w-36 rounded-full" />
-            <p className="mt-2">Start the simulation to watch the city come alive.</p>
+            <p className="mt-2 px-4">{t("feed.empty")}</p>
           </div>
         ) : (
           events.map((ev) => {
@@ -43,9 +45,9 @@ export default function EventFeed({ events }: { events: EventItem[] }) {
                 <div className="min-w-0 flex-1">
                   <p className="text-xs leading-relaxed text-slate-200">{ev.narrative}</p>
                   <div className="mt-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                    <span>Day {ev.day}</span>
+                    <span>{t("feed.day", { n: ev.day })}</span>
                     <span>·</span>
-                    <span>{k.label}</span>
+                    <span>{t(k.label)}</span>
                     {d !== 0 && (
                       <span className="num ml-auto" style={{ color: tone }}>
                         {d > 0 ? "+" : ""}{d}

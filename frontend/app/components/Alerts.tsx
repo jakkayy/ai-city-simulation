@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useI18n } from "../lib/i18n"
 import type { AdvisorMessage, CityManagerProposal } from "../lib/types"
 
 interface Props {
@@ -15,16 +16,16 @@ interface Props {
 }
 
 const CRISIS = {
-  warning: { color: "#fbbf24", label: "Warning", text: "Happiness is slipping" },
-  critical: { color: "#fb923c", label: "Critical", text: "Citizens are deeply unhappy" },
-  collapse: { color: "#fb7185", label: "Collapse", text: "The city is on the brink" },
+  warning: { color: "#fbbf24" },
+  critical: { color: "#fb923c" },
+  collapse: { color: "#fb7185" },
 } as const
 
-function Close({ onClick, color }: { onClick: () => void; color: string }) {
+function Close({ onClick, color, label }: { onClick: () => void; color: string; label: string }) {
   return (
     <button
       onClick={onClick}
-      aria-label="Dismiss"
+      aria-label={label}
       className="focus-ring flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition hover:bg-white/10"
       style={{ color }}
     >
@@ -34,6 +35,7 @@ function Close({ onClick, color }: { onClick: () => void; color: string }) {
 }
 
 export default function Alerts(p: Props) {
+  const { t } = useI18n()
   const [accepting, setAccepting] = useState(false)
   const c = p.crisis ? CRISIS[p.crisis] : null
   const reasoning = p.proposal?.reasoning ?? p.proposal?.reason
@@ -47,9 +49,9 @@ export default function Alerts(p: Props) {
           role="alert"
         >
           <span className="live-dot shrink-0" />
-          <span className="font-bold uppercase tracking-[0.14em]">{c.label}</span>
+          <span className="th-plain font-bold uppercase tracking-[0.14em]">{t(`crisis.${p.crisis}`)}</span>
           <span className="text-slate-200">
-            {c.text} · avg happiness <span className="num font-bold">{p.avgHappiness.toFixed(1)}</span>
+            {t(`crisis.${p.crisis}.t`)} · {t("crisis.avg")} <span className="num font-bold">{p.avgHappiness.toFixed(1)}</span>
           </span>
         </div>
       )}
@@ -58,10 +60,10 @@ export default function Alerts(p: Props) {
         <div className="fade-up rounded-2xl border border-amber-300/30 bg-amber-400/[0.07] px-4 py-3.5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="eyebrow !text-amber-200">Policy Advisor · {p.advisor.crisis_level} crisis</p>
+              <p className="eyebrow !text-amber-200">{t("advisor.title", { level: t(`crisis.${p.advisor.crisis_level}`) })}</p>
               <p className="mt-1.5 text-sm leading-relaxed text-amber-50/90">{p.advisor.advice}</p>
             </div>
-            <Close onClick={p.onDismissAdvisor} color="#fcd34d" />
+            <Close onClick={p.onDismissAdvisor} color="#fcd34d" label={t("dismiss")} />
           </div>
         </div>
       )}
@@ -70,7 +72,7 @@ export default function Alerts(p: Props) {
         <div className="fade-up rounded-2xl border border-cyan-300/30 bg-cyan-400/[0.07] px-4 py-3.5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="eyebrow !text-cyan-200">City Manager Proposal</p>
+              <p className="eyebrow !text-cyan-200">{t("proposal.title")}</p>
               <p className="mt-1.5 text-sm text-cyan-50">
                 <span className="font-semibold">{p.proposal.policy_type.replace(/_/g, " ")}</span>
                 {reasoning && <span className="text-cyan-100/80"> · {reasoning}</span>}
@@ -90,13 +92,13 @@ export default function Alerts(p: Props) {
                       }
                     }}
                   >
-                    {accepting ? "Enacting…" : "Enact this policy"}
+                    {accepting ? t("proposal.enacting") : t("proposal.enact")}
                   </button>
-                  <button className="btn focus-ring !h-8 !text-xs" onClick={p.onDismissProposal}>Ignore</button>
+                  <button className="btn focus-ring !h-8 !text-xs" onClick={p.onDismissProposal}>{t("proposal.ignore")}</button>
                 </div>
               )}
             </div>
-            <Close onClick={p.onDismissProposal} color="#67e8f9" />
+            <Close onClick={p.onDismissProposal} color="#67e8f9" label={t("dismiss")} />
           </div>
         </div>
       )}

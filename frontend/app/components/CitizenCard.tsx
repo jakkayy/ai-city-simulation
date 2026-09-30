@@ -1,17 +1,8 @@
 "use client"
 
+import { useI18n } from "../lib/i18n"
 import type { Citizen } from "../lib/types"
 import { moodColor, prettyAction, ZONE_META } from "../lib/mood"
-
-const JOB_LABEL: Record<string, string> = {
-  business_owner: "Business owner",
-  professional: "Professional",
-  teacher: "Teacher",
-  service_worker: "Service worker",
-  laborer: "Laborer",
-  farmer: "Farmer",
-  unemployed: "Unemployed",
-}
 
 interface Props {
   citizen: Citizen
@@ -20,6 +11,7 @@ interface Props {
 }
 
 export default function CitizenCard({ citizen, highlighted, onHover }: Props) {
+  const { t } = useI18n()
   const zone = ZONE_META[citizen.zone]
   const color = moodColor(citizen.happiness)
   const initials = citizen.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()
@@ -41,13 +33,13 @@ export default function CitizenCard({ citizen, highlighted, onHover }: Props) {
           {citizen.pending_reaction && (
             <span className="absolute -right-1 -top-1 flex h-3 w-3">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-75" />
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-violet-400 ring-2 ring-slate-900" title="Thinking…" />
+              <span className="relative inline-flex h-3 w-3 rounded-full bg-violet-400 ring-2 ring-slate-900" title={t("cit.thinking")} />
             </span>
           )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold text-white">{citizen.name}</div>
-          <div className="truncate text-xs text-slate-400">{JOB_LABEL[citizen.job_type] ?? citizen.job_type}</div>
+          <div className="truncate text-xs text-slate-400">{t(`job.${citizen.job_type}`)}</div>
         </div>
         <span
           className="rounded-md px-1.5 py-0.5 text-[11px] font-bold"
@@ -59,7 +51,7 @@ export default function CitizenCard({ citizen, highlighted, onHover }: Props) {
 
       <div className="mt-3.5">
         <div className="flex items-baseline justify-between text-xs">
-          <span className="text-slate-400">Happiness</span>
+          <span className="text-slate-400">{t("cit.happiness")}</span>
           <span className="num font-bold" style={{ color }}>{citizen.happiness.toFixed(1)}</span>
         </div>
         <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-800">
@@ -71,7 +63,7 @@ export default function CitizenCard({ citizen, highlighted, onHover }: Props) {
       </div>
 
       <div className="mt-3 flex items-baseline justify-between text-xs">
-        <span className="text-slate-400">Savings</span>
+        <span className="text-slate-400">{t("cit.savings")}</span>
         <span className={`num font-semibold ${citizen.savings < 0 ? "text-rose-300" : "text-emerald-300"}`}>
           {citizen.savings < 0 ? "-" : ""}${Math.abs(citizen.savings).toLocaleString("en-US", { maximumFractionDigits: 0 })}
         </span>

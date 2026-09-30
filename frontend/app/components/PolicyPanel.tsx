@@ -2,53 +2,34 @@
 
 import { useState } from "react"
 import { enactPolicy } from "../lib/api"
+import { useI18n } from "../lib/i18n"
 import type { PolicyType } from "../lib/types"
 
-const POLICY_META: Record<PolicyType, {
-  label: string
-  description: string
-  fields: { key: string; label: string; min: number; max: number; step: number; defaultValue: number }[]
-}> = {
-  tax_increase: {
-    label: "Tax Increase",
-    description: "Raise tax rate — boosts city fund, hurts citizens",
-    fields: [{ key: "tax_rate", label: "New Tax Rate (0–0.60)", min: 0.01, max: 0.60, step: 0.01, defaultValue: 0.25 }],
-  },
-  tax_decrease: {
-    label: "Tax Decrease",
-    description: "Lower tax rate — pleases citizens, reduces city income",
-    fields: [{ key: "tax_rate", label: "New Tax Rate (0–0.60)", min: 0.01, max: 0.60, step: 0.01, defaultValue: 0.10 }],
-  },
-  service_boost: {
-    label: "Service Boost",
-    description: "Improve public services — costs city fund, raises happiness",
-    fields: [{ key: "service_quality_delta", label: "Quality Delta (+1 to +50)", min: 1, max: 50, step: 1, defaultValue: 10 }],
-  },
-  service_cut: {
-    label: "Service Cut",
-    description: "Cut public services — saves fund, lowers happiness",
-    fields: [{ key: "service_quality_delta", label: "Quality Delta (−1 to −50)", min: -50, max: -1, step: 1, defaultValue: -10 }],
-  },
-  housing: {
-    label: "Housing Programme",
-    description: "Fund affordable housing — high cost, improves Zone C",
-    fields: [{ key: "fund_cost", label: "Fund Cost ($)", min: 500, max: 20000, step: 500, defaultValue: 5000 }],
-  },
-  job_program: {
-    label: "Job Programme",
-    description: "Create jobs for unemployed citizens",
-    fields: [
-      { key: "fund_cost", label: "Fund Cost ($)", min: 500, max: 20000, step: 500, defaultValue: 3000 },
-      { key: "unemployment_reduction", label: "Unemployment Reduction (%)", min: 1, max: 100, step: 1, defaultValue: 30 },
-    ],
-  },
+interface Field { key: string; min: number; max: number; step: number; defaultValue: number }
+
+const FIELDS: Record<PolicyType, Field[]> = {
+  tax_increase: [{ key: "tax_rate", min: 0.01, max: 0.6, step: 0.01, defaultValue: 0.25 }],
+  tax_decrease: [{ key: "tax_rate", min: 0.01, max: 0.6, step: 0.01, defaultValue: 0.1 }],
+  service_boost: [{ key: "service_quality_delta", min: 1, max: 50, step: 1, defaultValue: 10 }],
+  service_cut: [{ key: "service_quality_delta", min: -50, max: -1, step: 1, defaultValue: -10 }],
+  housing: [{ key: "fund_cost", min: 500, max: 20000, step: 500, defaultValue: 5000 }],
+  job_program: [
+    { key: "fund_cost", min: 500, max: 20000, step: 500, defaultValue: 3000 },
+    { key: "unemployment_reduction", min: 1, max: 100, step: 1, defaultValue: 30 },
+  ],
 }
 
-const POLICY_TYPES = Object.keys(POLICY_META) as PolicyType[]
+const POLICY_TYPES = Object.keys(FIELDS) as PolicyType[]
 
-interface Props {
-  onEnacted: () => void
-}
+// ready-made choices; `params` are in slider units (percent for unemployment_reduction)
+const PRESETS: { id: string; type: PolicyType; params: Record<string, number>; accent: string }[] = [
+  { id: "tax10", type: "tax_decrease", params: { tax_rate: 0.1 }, accent: "#34d399" },
+  { id: "tax25", type: "tax_increase", params: { tax_rate: 0.25 }, accent: "#fbbf24" },
+  { id: "svc10", type: "service_boost", params: { service_quality_delta: 10 }, accent: "#38bdf8" },
+  { id: "svcm10", type: "service_cut", params: { service_quality_delta: -10 }, accent: "#fb7185" },
+  { id: "house", type: "housing", params: { fund_cost: 5000 }, accent: "#a78bfa" },
+  { id: "jobs", type: "job_program", params: { fund_cost: 3000, unemployment_reduction: 30 }, accent: "#22d3ee" },
+]
 
 function formatParamValue(key: string, value: number) {
   if (key === "tax_rate") return `${Math.round(value * 100)}%`
@@ -57,164 +38,179 @@ function formatParamValue(key: string, value: number) {
   return value > 0 ? `+${value}` : `${value}`
 }
 
+interface Props {
+  onEnacted: () => void
+}
+
 export default function PolicyPanel({ onEnacted }: Props) {
+  const { t } = useI18n()
   const [open, setOpen] = useState(false)
-  const [type, setType] = useState<PolicyType>("tax_increase")
+  const [tab, setTab] = useState<"preset" | "custom">("preset")
+  const [presetId, setPresetId] = useState<string | null>(null)
+  const [type, setType] = useState<PolicyType>("tax_decrease")
   const [name, setName] = useState("")
   const [params, setParams] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  const meta = POLICY_META[type]
+  const fields = FIELDS[type]
+  const preset = PRESETS.find((p) => p.id === presetId) ?? null
+  const getParam = (f: Field) => params[f.key] ?? f.defaultValue
 
-  const handleTypeChange = (t: PolicyType) => {
-    setType(t)
-    setParams({})
-    setError(null)
-    setSuccess(null)
-  }
+  const reset = () => { setError(null); setSuccess(null) }
 
-  const getParam = (key: string, defaultValue: number) =>
-    params[key] !== undefined ? params[key] : defaultValue
-
-  const getRangeFill = (value: number, min: number, max: number) => {
-    const percent = ((value - min) / (max - min)) * 100
-    return {
-      background: `linear-gradient(to right, #67e8f9 0%, #67e8f9 ${percent}%, #334155 ${percent}%, #334155 100%)`,
-    }
-  }
-
-  const handleSubmit = async () => {
-    if (!name.trim()) { setError("Policy name is required"); return }
+  const submit = async (pType: PolicyType, pName: string, values: Record<string, number>) => {
     setLoading(true)
-    setError(null)
-    setSuccess(null)
+    reset()
     try {
-      const filled: Record<string, number> = {}
-      for (const f of meta.fields) filled[f.key] = getParam(f.key, f.defaultValue)
-      // the slider is in percent; the API (and City Manager) use a 0–1 fraction
-      if ("unemployment_reduction" in filled) filled.unemployment_reduction /= 100
-      const result = await enactPolicy(type, name.trim(), filled)
-      setSuccess(`Enacted "${result.name}" on Day ${result.enacted_day}`)
+      const body = { ...values }
+      // the API (and the City Manager) use a 0–1 fraction; sliders are in percent
+      if ("unemployment_reduction" in body) body.unemployment_reduction /= 100
+      const result = await enactPolicy(pType, pName, body)
+      setSuccess(t("pol.enacted", { name: result.name, day: result.enacted_day }))
       setName("")
       setParams({})
+      setPresetId(null)
       onEnacted()
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to enact policy")
+      setError(e instanceof Error ? e.message : t("pol.failed"))
     } finally {
       setLoading(false)
     }
   }
 
+  const confirm = () => {
+    if (tab === "preset") {
+      if (preset) submit(preset.type, t(`preset.${preset.id}`), preset.params)
+      return
+    }
+    if (!name.trim()) { setError(t("pol.nameReq")); return }
+    const values: Record<string, number> = {}
+    for (const f of fields) values[f.key] = getParam(f)
+    submit(type, name.trim(), values)
+  }
+
+  const rangeFill = (v: number, f: Field) => {
+    const pct = ((v - f.min) / (f.max - f.min)) * 100
+    return { background: `linear-gradient(to right, #67e8f9 ${pct}%, #334155 ${pct}%)` }
+  }
+
   return (
     <div className="relative">
       <button
-        onClick={() => { setOpen((o) => !o); setError(null); setSuccess(null) }}
+        onClick={() => { setOpen((o) => !o); reset() }}
         className="btn btn-primary focus-ring"
+        title={t("btn.policy.hint")}
       >
-        Enact Policy
+        {t("btn.policy")}
       </button>
 
       {open && (
-        <div className="panel popover absolute right-0 top-12 z-[100] flex w-[24rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl p-0 shadow-2xl shadow-cyan-950/30">
+        <div className="panel popover absolute right-0 top-12 z-[100] flex max-h-[80vh] w-[26rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl">
           <div className="border-b border-cyan-300/15 bg-cyan-400/10 px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">Enact a City Policy</p>
-                <p className="mt-1 text-xs text-slate-400">Day-level intervention package</p>
+                <p className="eyebrow !text-cyan-200">{t("pol.title")}</p>
+                <p className="mt-1 text-xs text-slate-400">{t("pol.sub")}</p>
               </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="focus-ring rounded-lg px-2 py-1 text-sm font-semibold text-slate-400 transition hover:bg-white/5 hover:text-white"
-                aria-label="Close policy panel"
-              >
-                x
-              </button>
+              <button onClick={() => setOpen(false)} aria-label={t("btn.close")} className="focus-ring rounded-lg px-2 py-1 text-sm font-semibold text-slate-400 transition hover:bg-white/5 hover:text-white">×</button>
+            </div>
+            <div className="mt-3 flex gap-1.5">
+              <button className="chip focus-ring" data-active={tab === "preset"} onClick={() => { setTab("preset"); reset() }}>{t("pol.tab.preset")}</button>
+              <button className="chip focus-ring" data-active={tab === "custom"} onClick={() => { setTab("custom"); reset() }}>{t("pol.tab.custom")}</button>
             </div>
           </div>
 
-          <div className="flex flex-col gap-4 p-4">
-            <div className="rounded-xl border border-slate-700/80 bg-slate-950/45 p-3">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <label className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Policy Type</label>
-                <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-cyan-200">
-                  Active Draft
-                </span>
-              </div>
-              <select
-                className="field focus-ring !h-11 w-full font-semibold"
-                value={type}
-                onChange={(e) => handleTypeChange(e.target.value as PolicyType)}
-              >
-                {POLICY_TYPES.map((t) => (
-                  <option key={t} value={t}>{POLICY_META[t].label}</option>
-                ))}
-              </select>
-              <p className="mt-2 text-xs leading-relaxed text-slate-400">{meta.description}</p>
-            </div>
+          <div className="thin-scrollbar flex flex-col gap-4 overflow-y-auto p-4">
+            {tab === "preset" ? (
+              <>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {PRESETS.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => { setPresetId(p.id); reset() }}
+                      aria-pressed={presetId === p.id}
+                      className="focus-ring rounded-xl border p-3 text-left text-sm font-semibold text-white transition hover:-translate-y-0.5"
+                      style={{
+                        borderColor: presetId === p.id ? p.accent : "rgba(148,163,184,0.2)",
+                        background: presetId === p.id ? `${p.accent}1f` : "rgba(15,23,42,0.5)",
+                        boxShadow: presetId === p.id ? `0 0 20px ${p.accent}30` : undefined,
+                      }}
+                    >
+                      {t(`preset.${p.id}`)}
+                    </button>
+                  ))}
+                </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-slate-400">Policy Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={`e.g. "${meta.label} Decree"`}
-                className="field focus-ring !h-11"
-              />
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {meta.fields.map((f) => {
-                const value = getParam(f.key, f.defaultValue)
-                return (
-                  <div key={f.key} className="rounded-xl border border-slate-700/70 bg-slate-950/35 p-3">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <label className="text-xs font-semibold text-slate-400">{f.label}</label>
-                      <span className="rounded-lg bg-slate-800 px-2 py-1 text-xs font-bold text-cyan-100">
-                        {formatParamValue(f.key, value)}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min={f.min}
-                      max={f.max}
-                      step={f.step}
-                      value={value}
-                      onChange={(e) => setParams((p) => ({ ...p, [f.key]: Number(e.target.value) }))}
-                      className="h-2 w-full cursor-pointer appearance-none rounded-full accent-cyan-300 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-cyan-200 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-200 [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-cyan-950/40"
-                      style={getRangeFill(value, f.min, f.max)}
-                    />
-                    <div className="mt-2 flex justify-between text-[11px] font-medium text-slate-600">
-                      <span>{formatParamValue(f.key, f.min)}</span>
-                      <span>{formatParamValue(f.key, f.max)}</span>
-                    </div>
+                {preset ? (
+                  <div className="flex flex-col gap-2 rounded-xl border border-white/[0.08] bg-slate-950/40 p-3 text-xs leading-relaxed">
+                    <p><span className="font-bold text-emerald-300">+ {t("pol.pros")}:</span> <span className="text-slate-200">{t(`preset.${preset.id}.pro`)}</span></p>
+                    <p><span className="font-bold text-rose-300">− {t("pol.cons")}:</span> <span className="text-slate-200">{t(`preset.${preset.id}.con`)}</span></p>
                   </div>
-                )
-              })}
-            </div>
+                ) : (
+                  <p className="text-center text-xs text-slate-500">{t("pol.pickHint")}</p>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="rounded-xl border border-slate-700/80 bg-slate-950/45 p-3">
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400" htmlFor="pol-type">{t("pol.type")}</label>
+                  <select
+                    id="pol-type"
+                    className="field focus-ring !h-11 w-full font-semibold"
+                    value={type}
+                    onChange={(e) => { setType(e.target.value as PolicyType); setParams({}); reset() }}
+                  >
+                    {POLICY_TYPES.map((k) => <option key={k} value={k}>{t(`pol.${k}`)}</option>)}
+                  </select>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-400">{t(`pol.${type}.d`)}</p>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-slate-400" htmlFor="pol-name">{t("pol.name")}</label>
+                  <input id="pol-name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={t(`pol.${type}`)} className="field focus-ring !h-11" />
+                </div>
+
+                {fields.map((f) => {
+                  const v = getParam(f)
+                  return (
+                    <div key={f.key} className="rounded-xl border border-slate-700/70 bg-slate-950/35 p-3">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <label className="text-xs font-semibold text-slate-400">{t(`pol.f.${f.key}`)}</label>
+                        <span className="num rounded-lg bg-slate-800 px-2 py-1 text-xs font-bold text-cyan-100">{formatParamValue(f.key, v)}</span>
+                      </div>
+                      <input
+                        type="range" min={f.min} max={f.max} step={f.step} value={v}
+                        onChange={(e) => setParams((p) => ({ ...p, [f.key]: Number(e.target.value) }))}
+                        className="h-2 w-full cursor-pointer appearance-none rounded-full accent-cyan-300"
+                        style={rangeFill(v, f)}
+                      />
+                      <div className="num mt-2 flex justify-between text-[11px] font-medium text-slate-600">
+                        <span>{formatParamValue(f.key, f.min)}</span>
+                        <span>{formatParamValue(f.key, f.max)}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </>
+            )}
 
             {(error || success) && (
-              <div className={`rounded-xl border px-3 py-2 text-xs ${error ? "border-rose-300/25 bg-rose-400/10 text-rose-200" : "border-emerald-300/25 bg-emerald-400/10 text-emerald-200"}`}>
+              <div role="status" className={`rounded-xl border px-3 py-2 text-xs ${error ? "border-rose-300/25 bg-rose-400/10 text-rose-200" : "border-emerald-300/25 bg-emerald-400/10 text-emerald-200"}`}>
                 {error ?? success}
               </div>
             )}
 
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2">
               <button
-                onClick={handleSubmit}
-                disabled={loading}
+                onClick={confirm}
+                disabled={loading || (tab === "preset" && !preset)}
                 className="btn btn-primary focus-ring flex-1"
               >
-                {loading ? "Enacting..." : "Enact Policy"}
+                {loading ? t("pol.enacting") : t("pol.confirm")}
               </button>
-              <button
-                onClick={() => setOpen(false)}
-                className="btn focus-ring"
-              >
-                Cancel
-              </button>
+              <button onClick={() => setOpen(false)} className="btn focus-ring">{t("btn.cancel")}</button>
             </div>
           </div>
         </div>

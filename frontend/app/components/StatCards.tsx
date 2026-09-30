@@ -1,6 +1,8 @@
 "use client"
 
+import { useI18n } from "../lib/i18n"
 import AnimatedNumber from "./AnimatedNumber"
+import Hint from "./Hint"
 import Sparkline from "./Sparkline"
 import type { HistoryPoint } from "../lib/types"
 import { moodColor } from "../lib/mood"
@@ -14,9 +16,10 @@ interface Props {
 }
 
 function Delta({ series, suffix = "", invert = false }: { series: number[]; suffix?: string; invert?: boolean }) {
-  if (series.length < 2) return <span className="text-xs text-slate-500">— no change</span>
+  const { t } = useI18n()
+  if (series.length < 2) return <span className="text-xs text-slate-500">{t("delta.none")}</span>
   const d = series[series.length - 1] - series[series.length - 2]
-  if (Math.abs(d) < 0.05) return <span className="text-xs text-slate-500">— steady</span>
+  if (Math.abs(d) < 0.05) return <span className="text-xs text-slate-500">{t("delta.steady")}</span>
   const good = invert ? d < 0 : d > 0
   return (
     <span className={`text-xs font-semibold ${good ? "text-emerald-300" : "text-rose-300"}`}>
@@ -28,6 +31,7 @@ function Delta({ series, suffix = "", invert = false }: { series: number[]; suff
 
 function Card({
   label,
+  hint,
   color,
   children,
   spark,
@@ -35,6 +39,7 @@ function Card({
   delay,
 }: {
   label: string
+  hint: string
   color: string
   children: React.ReactNode
   spark?: React.ReactNode
@@ -47,7 +52,7 @@ function Card({
         className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-20 blur-2xl"
         style={{ background: color }}
       />
-      <div className="eyebrow">{label}</div>
+      <div className="eyebrow flex items-center gap-1.5">{label}<Hint text={hint} /></div>
       <div className="mt-2 flex items-end justify-between gap-3">
         <div className="num text-[2rem] font-bold leading-none tracking-tight" style={{ color }}>
           {children}
@@ -60,6 +65,7 @@ function Card({
 }
 
 export default function StatCards({ happiness, fund, service, taxRate, history }: Props) {
+  const { t } = useI18n()
   const hs = history.map((p) => p.happiness)
   const fs = history.map((p) => p.fund)
   const ss = history.map((p) => p.service)
@@ -68,7 +74,8 @@ export default function StatCards({ happiness, fund, service, taxRate, history }
   return (
     <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Card
-        label="Avg Happiness"
+        label={t("stat.happiness")}
+        hint={t("stat.happiness.hint")}
         color={moodColor(happiness)}
         delay={0}
         spark={<Sparkline data={hs.length ? hs : [happiness]} color={moodColor(happiness)} />}
@@ -79,7 +86,8 @@ export default function StatCards({ happiness, fund, service, taxRate, history }
       </Card>
 
       <Card
-        label="City Fund"
+        label={t("stat.fund")}
+        hint={t("stat.fund.hint")}
         color={fund >= 0 ? "#22d3ee" : "#fb7185"}
         delay={60}
         spark={<Sparkline data={fs.length ? fs : [fund]} color={fund >= 0 ? "#22d3ee" : "#fb7185"} />}
@@ -89,7 +97,8 @@ export default function StatCards({ happiness, fund, service, taxRate, history }
       </Card>
 
       <Card
-        label="Service Quality"
+        label={t("stat.service")}
+        hint={t("stat.service.hint")}
         color="#38bdf8"
         delay={120}
         spark={<Sparkline data={ss.length ? ss : [service]} color="#38bdf8" />}
@@ -100,7 +109,8 @@ export default function StatCards({ happiness, fund, service, taxRate, history }
       </Card>
 
       <Card
-        label="Tax Rate"
+        label={t("stat.tax")}
+        hint={t("stat.tax.hint")}
         color="#fbbf24"
         delay={180}
         footer={
@@ -111,7 +121,7 @@ export default function StatCards({ happiness, fund, service, taxRate, history }
             />
           </div>
         }
-        spark={<span className="text-xs text-slate-500">cap 60%</span>}
+        spark={<span className="text-xs text-slate-500">{t("stat.cap")}</span>}
       >
         <AnimatedNumber value={taxPct} format={(n) => `${Math.round(n)}%`} />
       </Card>
