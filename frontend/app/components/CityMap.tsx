@@ -1,50 +1,24 @@
 "use client"
 
+import { useMemo, useState } from "react"
 import type { Citizen } from "../lib/types"
+import { moodColor, MOOD, ZONE_KEYS, ZONE_META, type ZoneKey } from "../lib/mood"
 
 const W = 760
 const H = 500
 
-const ZONES = {
-  A: {
-    x: 56,
-    y: 52,
-    w: 260,
-    h: 164,
-    bg: "#0b1b3d",
-    border: "#60a5fa",
-    accent: "#2563eb",
-    label: "Zone A",
-    sub: "Civic / High Rise",
-    capacity: 24,
-  },
-  B: {
-    x: 444,
-    y: 52,
-    w: 260,
-    h: 164,
-    bg: "#062817",
-    border: "#34d399",
-    accent: "#059669",
-    label: "Zone B",
-    sub: "Mixed Use Quarter",
-    capacity: 24,
-  },
-  C: {
-    x: 250,
-    y: 304,
-    w: 260,
-    h: 144,
-    bg: "#331305",
-    border: "#f59e0b",
-    accent: "#d97706",
-    label: "Zone C",
-    sub: "Residential Blocks",
-    capacity: 30,
-  },
-} as const
+const LAYOUT: Record<ZoneKey, { x: number; y: number; w: number; h: number; cols: number; dotsY: number; bldBase: number }> = {
+  A: { x: 56, y: 52, w: 260, h: 164, cols: 8, dotsY: 112, bldBase: 92 },
+  B: { x: 444, y: 52, w: 260, h: 164, cols: 8, dotsY: 112, bldBase: 92 },
+  C: { x: 250, y: 318, w: 260, h: 128, cols: 10, dotsY: 84, bldBase: 64 },
+}
 
-type ZoneKey = keyof typeof ZONES
+// building silhouettes: offset from zone left, width, height
+const BUILDINGS: Record<ZoneKey, { dx: number; w: number; h: number }[]> = {
+  A: [{ dx: 18, w: 22, h: 44 }, { dx: 48, w: 18, h: 34 }, { dx: 76, w: 30, h: 52 }, { dx: 118, w: 24, h: 38 }, { dx: 152, w: 18, h: 46 }, { dx: 180, w: 26, h: 50 }, { dx: 214, w: 20, h: 32 }],
+  B: [{ dx: 18, w: 28, h: 34 }, { dx: 56, w: 34, h: 44 }, { dx: 100, w: 26, h: 28 }, { dx: 136, w: 36, h: 48 }, { dx: 182, w: 26, h: 32 }, { dx: 216, w: 22, h: 38 }],
+  C: [{ dx: 16, w: 30, h: 20 }, { dx: 54, w: 30, h: 16 }, { dx: 92, w: 30, h: 22 }, { dx: 130, w: 30, h: 16 }, { dx: 168, w: 30, h: 20 }, { dx: 206, w: 32, h: 18 }],
+}
 
 const ROAD_H = { x: 34, y: 238, w: 692, h: 54 }
 const ROAD_V = { x: 352, y: 30, w: 56, h: 208 }
@@ -55,258 +29,207 @@ const ZONE_C_ACCESS = [
   { x: 544, y: 310, w: 18, h: 138 },
 ]
 
-const HAPPINESS_FILL = (h: number) => h >= 60 ? "#4ade80" : h >= 35 ? "#fbbf24" : "#fb7185"
-const HAPPINESS_STROKE = (h: number) => h >= 60 ? "#166534" : h >= 35 ? "#92400e" : "#9f1239"
+const DOT_GAP = 19
+const DOT_R = 6
 
-const GRID: Record<ZoneKey, { ox: number; oy: number; cols: number }> = {
-  A: { ox: 76, oy: 148, cols: 8 },
-  B: { ox: 464, oy: 148, cols: 8 },
-  C: { ox: 276, oy: 368, cols: 9 },
+interface Slot {
+  citizen: Citizen
+  x: number
+  y: number
 }
 
-const DOT_R = 6
-const DOT_GAP = 19
+function layoutDots(citizens: Citizen[]): Slot[] {
+  const slots: Slot[] = []
+  for (const zone of ZONE_KEYS) {
+    const L = LAYOUT[zone]
+    const members = citizens.filter((c) => c.zone === zone).sort((a, b) => a.id.localeCompare(b.id))
+    const ox = L.x + (L.w - (L.cols - 1) * DOT_GAP) / 2
+    members.forEach((citizen, i) => {
+      slots.push({
+        citizen,
+        x: ox + (i % L.cols) * DOT_GAP,
+        y: L.y + L.dotsY + Math.floor(i / L.cols) * DOT_GAP,
+      })
+    })
+  }
+  return slots
+}
 
-function BasePlan() {
-  const localRoads = [
-    { x1: 56, y1: 30, x2: 56, y2: 470 },
-    { x1: 124, y1: 30, x2: 124, y2: 470 },
-    { x1: 192, y1: 30, x2: 192, y2: 470 },
-    { x1: 316, y1: 30, x2: 316, y2: 292 },
-    { x1: 444, y1: 30, x2: 444, y2: 292 },
-    { x1: 512, y1: 30, x2: 512, y2: 470 },
-    { x1: 580, y1: 30, x2: 580, y2: 470 },
-    { x1: 704, y1: 30, x2: 704, y2: 470 },
-    { x1: 34, y1: 52, x2: 726, y2: 52 },
-    { x1: 34, y1: 116, x2: 726, y2: 116 },
-    { x1: 34, y1: 216, x2: 726, y2: 216 },
-    { x1: 34, y1: 304, x2: 198, y2: 304 },
-    { x1: 562, y1: 304, x2: 726, y2: 304 },
-    { x1: 34, y1: 374, x2: 198, y2: 374 },
-    { x1: 562, y1: 374, x2: 726, y2: 374 },
-    { x1: 34, y1: 448, x2: 726, y2: 448 },
-  ]
+function Defs() {
+  return (
+    <defs>
+      <pattern id="city-grid" width="22" height="22" patternUnits="userSpaceOnUse">
+        <path d="M22 0H0V22" fill="none" stroke="#1b2a42" strokeWidth={0.6} />
+      </pattern>
+      <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
+        <stop offset="55%" stopColor="#000" stopOpacity={0} />
+        <stop offset="100%" stopColor="#000" stopOpacity={0.6} />
+      </radialGradient>
+      <linearGradient id="road" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#222e42" />
+        <stop offset="100%" stopColor="#192233" />
+      </linearGradient>
+      {ZONE_KEYS.map((z) => (
+        <linearGradient key={z} id={`zone-${z}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={ZONE_META[z].color} stopOpacity={0.22} />
+          <stop offset="100%" stopColor={ZONE_META[z].color} stopOpacity={0.05} />
+        </linearGradient>
+      ))}
+      <filter id="blur-glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="9" />
+      </filter>
+      <filter id="soft-glow" x="-100%" y="-100%" width="300%" height="300%">
+        <feGaussianBlur stdDeviation="2.5" result="b" />
+        <feMerge>
+          <feMergeNode in="b" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+  )
+}
 
+function Ground() {
   return (
     <g>
-      <rect width={W} height={H} fill="#081321" />
-      <rect x={34} y={30} width={692} height={444} rx={16} fill="#0d1726" stroke="#1e293b" strokeWidth={1} />
-      {localRoads.map((road, index) => (
-        <line
-          key={index}
-          x1={road.x1}
-          y1={road.y1}
-          x2={road.x2}
-          y2={road.y2}
-          stroke="#1f2d3f"
-          strokeWidth={2}
-          strokeDasharray="1 0"
-        />
-      ))}
-      <rect x={92} y={330} width={96} height={58} rx={10} fill="#123524" stroke="#255f45" opacity={0.75} />
-      <path d="M102 374 C126 338 158 338 180 374" fill="none" stroke="#3f7f5a" strokeWidth={4} opacity={0.5} />
-      <text x={140} y={362} textAnchor="middle" fontSize={9} fill="#6ee7b7" fontWeight={700}>PARK</text>
-      <rect x={572} y={330} width={92} height={58} rx={10} fill="#1e293b" stroke="#475569" opacity={0.72} />
-      <text x={618} y={362} textAnchor="middle" fontSize={9} fill="#cbd5e1" fontWeight={700}>SERVICES</text>
+      <rect width={W} height={H} fill="#070d19" />
+      <rect width={W} height={H} fill="url(#city-grid)" opacity={0.7} />
+      <rect x={34} y={30} width={692} height={444} rx={18} fill="none" stroke="#22324d" strokeWidth={1} />
+
+      {/* park */}
+      <g>
+        <rect x={84} y={326} width={112} height={72} rx={14} fill="#0c2a1f" stroke="#1f6b4c" strokeOpacity={0.6} />
+        {[[104, 350], [124, 368], [150, 346], [172, 372], [140, 384]].map(([x, y], i) => (
+          <g key={i}>
+            <circle cx={x} cy={y} r={9} fill="#14532d" opacity={0.85} />
+            <circle cx={x - 2} cy={y - 2} r={4} fill="#22c55e" opacity={0.35} />
+          </g>
+        ))}
+        <text x={140} y={340} textAnchor="middle" fontSize={8} fill="#6ee7b7" fontWeight={700} letterSpacing={1.2}>PARK</text>
+      </g>
+
+      {/* services */}
+      <g>
+        <rect x={568} y={326} width={104} height={72} rx={14} fill="#10203a" stroke="#3b6ea8" strokeOpacity={0.55} />
+        <path d="M620 346v24M608 358h24" stroke="#7dd3fc" strokeWidth={4} strokeLinecap="round" opacity={0.75} />
+        <text x={620} y={390} textAnchor="middle" fontSize={8} fill="#93c5fd" fontWeight={700} letterSpacing={1.2}>SERVICES</text>
+      </g>
     </g>
   )
 }
 
 function Roads() {
+  const mid = ROAD_H.y + ROAD_H.h / 2
+  const cx = ROAD_V.x + ROAD_V.w / 2
   return (
     <g>
-      <rect x={ROAD_H.x} y={ROAD_H.y} width={ROAD_H.w} height={ROAD_H.h} rx={2} fill="#202b3b" />
-      <rect x={ROAD_V.x} y={ROAD_V.y} width={ROAD_V.w} height={ROAD_V.h} rx={2} fill="#202b3b" />
-      <rect x={ROAD_V.x} y={ROAD_H.y} width={ROAD_V.w} height={ROAD_H.h} fill="#162132" />
-      <rect x={ROAD_V.x + 6} y={ROAD_H.y + 6} width={ROAD_V.w - 12} height={ROAD_H.h - 12} rx={8} fill="#263346" stroke="#334155" />
-      {ZONE_C_ACCESS.map((road, index) => (
-        <rect key={`c-access-${index}`} x={road.x} y={road.y} width={road.w} height={road.h} rx={4} fill="#1b2636" />
+      <rect x={ROAD_H.x} y={ROAD_H.y} width={ROAD_H.w} height={ROAD_H.h} fill="url(#road)" />
+      <rect x={ROAD_V.x} y={ROAD_V.y} width={ROAD_V.w} height={ROAD_V.h} fill="url(#road)" />
+      {ZONE_C_ACCESS.map((r, i) => (
+        <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} rx={3} fill="#172031" />
       ))}
 
-      {Array.from({ length: 18 }).map((_, index) => (
-        <rect key={`h${index}`} x={52 + index * 38} y={ROAD_H.y + 25} width={22} height={4} rx={2} fill="#64748b" opacity={0.45} />
-      ))}
-      {Array.from({ length: 7 }).map((_, index) => (
-        <rect key={`v${index}`} x={ROAD_V.x + 26} y={ROAD_V.y + 18 + index * 27} width={4} height={16} rx={2} fill="#64748b" opacity={0.45} />
-      ))}
-      {Array.from({ length: 9 }).map((_, index) => (
-        <rect key={`c-top-${index}`} x={218 + index * 34} y={299} width={18} height={3} rx={2} fill="#64748b" opacity={0.35} />
-      ))}
-      {Array.from({ length: 9 }).map((_, index) => (
-        <rect key={`c-bottom-${index}`} x={218 + index * 34} y={456} width={18} height={3} rx={2} fill="#64748b" opacity={0.35} />
-      ))}
+      {/* edge lines */}
+      <path d={`M${ROAD_H.x} ${ROAD_H.y + 2}H${ROAD_H.x + ROAD_H.w}M${ROAD_H.x} ${ROAD_H.y + ROAD_H.h - 2}H${ROAD_H.x + ROAD_H.w}`} stroke="#33445f" strokeWidth={1} />
 
-      <circle cx={ROAD_V.x + ROAD_V.w / 2} cy={ROAD_H.y + ROAD_H.h / 2} r={18} fill="#0f172a" stroke="#475569" strokeWidth={2} />
-      <text x={ROAD_V.x + ROAD_V.w / 2} y={ROAD_H.y + ROAD_H.h / 2 + 4} textAnchor="middle" fontSize={8} fill="#94a3b8" fontWeight={800}>
-        CBD
-      </text>
-      <text x={94} y={ROAD_H.y - 8} fontSize={9} fill="#64748b" fontWeight={700}>WEST AVE</text>
-      <text x={622} y={ROAD_H.y - 8} fontSize={9} fill="#64748b" fontWeight={700}>EAST AVE</text>
-      <text x={ROAD_V.x + ROAD_V.w + 10} y={178} fontSize={9} fill="#64748b" fontWeight={700} transform={`rotate(-90 ${ROAD_V.x + ROAD_V.w + 10} 178)`}>
-        CENTRAL BLVD
-      </text>
-      <text x={380} y={486} textAnchor="middle" fontSize={9} fill="#64748b" fontWeight={700}>RESIDENTIAL LOOP</text>
+      {/* flowing lane markers */}
+      <line className="lane" x1={ROAD_H.x + 6} y1={mid} x2={ROAD_H.x + ROAD_H.w - 6} y2={mid} stroke="#8aa0c0" strokeOpacity={0.5} strokeWidth={2} strokeDasharray="12 10" />
+      <line className="lane" x1={cx} y1={ROAD_V.y + 6} x2={cx} y2={ROAD_H.y - 4} stroke="#8aa0c0" strokeOpacity={0.5} strokeWidth={2} strokeDasharray="12 10" />
+      <line x1={218} y1={301} x2={542} y2={301} stroke="#8aa0c0" strokeOpacity={0.3} strokeWidth={1.5} strokeDasharray="8 8" />
+      <line x1={218} y1={457} x2={542} y2={457} stroke="#8aa0c0" strokeOpacity={0.3} strokeWidth={1.5} strokeDasharray="8 8" />
+
+      {/* CBD roundabout */}
+      <circle cx={cx} cy={mid} r={22} fill="#0b1324" stroke="#3a5078" strokeWidth={2} />
+      <circle cx={cx} cy={mid} r={16} fill="none" stroke="#22d3ee" strokeOpacity={0.35} strokeDasharray="3 4" />
+      <text x={cx} y={mid + 3} textAnchor="middle" fontSize={8} fill="#a5f3fc" fontWeight={800} letterSpacing={1}>CBD</text>
+
+      <g fontSize={8} fill="#62738f" fontWeight={700} letterSpacing={1.4}>
+        <text x={92} y={ROAD_H.y - 7}>WEST AVE</text>
+        <text x={620} y={ROAD_H.y - 7}>EAST AVE</text>
+        <text transform={`translate(${ROAD_V.x + ROAD_V.w + 12} 170) rotate(-90)`}>CENTRAL BLVD</text>
+        <text x={380} y={486} textAnchor="middle">RESIDENTIAL LOOP</text>
+      </g>
     </g>
   )
 }
 
-function ParcelGrid({ zone }: { zone: ZoneKey }) {
-  const z = ZONES[zone]
-  const verticals = Array.from({ length: Math.floor(z.w / 38) - 1 })
-  const horizontals = Array.from({ length: Math.floor((z.h - 34) / 32) - 1 })
-
+function Traffic() {
+  const cars: { path: string; dur: number; begin: number; color: string; vertical?: boolean }[] = [
+    { path: `M40 ${ROAD_H.y + 14} H720`, dur: 14, begin: 0, color: "#67e8f9" },
+    { path: `M40 ${ROAD_H.y + 14} H720`, dur: 14, begin: -7, color: "#f9a8d4" },
+    { path: `M720 ${ROAD_H.y + 40} H40`, dur: 17, begin: -3, color: "#fde68a" },
+    { path: `M720 ${ROAD_H.y + 40} H40`, dur: 17, begin: -11, color: "#a5b4fc" },
+    { path: `M${ROAD_V.x + 14} 32 V${ROAD_H.y + 10}`, dur: 8, begin: -2, color: "#86efac", vertical: true },
+    { path: `M${ROAD_V.x + 42} ${ROAD_H.y + 10} V32`, dur: 9, begin: -6, color: "#fdba74", vertical: true },
+    { path: `M207 301 H553 V457 H207 Z`, dur: 22, begin: 0, color: "#67e8f9" },
+  ]
   return (
-    <g opacity={0.42}>
-      {verticals.map((_, index) => (
-        <line
-          key={`v-${index}`}
-          x1={z.x + 26 + index * 38}
-          y1={z.y + 38}
-          x2={z.x + 26 + index * 38}
-          y2={z.y + z.h - 16}
-          stroke={z.border}
-          strokeWidth={0.6}
-          opacity={0.45}
-        />
-      ))}
-      {horizontals.map((_, index) => (
-        <line
-          key={`h-${index}`}
-          x1={z.x + 14}
-          y1={z.y + 62 + index * 32}
-          x2={z.x + z.w - 14}
-          y2={z.y + 62 + index * 32}
-          stroke={z.border}
-          strokeWidth={0.6}
-          opacity={0.45}
-        />
-      ))}
-    </g>
-  )
-}
-
-function DistrictBlocks({ zone }: { zone: ZoneKey }) {
-  const blocks =
-    zone === "A"
-      ? [
-          { x: 82, y: 84, w: 22, h: 50 }, { x: 112, y: 92, w: 18, h: 42 }, { x: 144, y: 74, w: 30, h: 60 },
-          { x: 196, y: 90, w: 24, h: 44 }, { x: 234, y: 82, w: 18, h: 52 }, { x: 272, y: 78, w: 26, h: 58 },
-        ]
-      : zone === "B"
-        ? [
-            { x: 466, y: 86, w: 28, h: 44 }, { x: 506, y: 80, w: 34, h: 52 }, { x: 552, y: 92, w: 28, h: 38 },
-            { x: 594, y: 78, w: 36, h: 54 }, { x: 642, y: 88, w: 26, h: 42 },
-          ]
-        : [
-            { x: 270, y: 330, w: 34, h: 18 }, { x: 312, y: 330, w: 34, h: 18 }, { x: 354, y: 330, w: 34, h: 18 },
-            { x: 396, y: 330, w: 34, h: 18 }, { x: 438, y: 330, w: 34, h: 18 },
-            { x: 292, y: 410, w: 34, h: 18 }, { x: 334, y: 410, w: 34, h: 18 }, { x: 376, y: 410, w: 34, h: 18 },
-            { x: 418, y: 410, w: 34, h: 18 },
-          ]
-
-  return (
-    <g opacity={0.78}>
-      {blocks.map((block, index) => (
-        <g key={index}>
-          <rect x={block.x} y={block.y} width={block.w} height={block.h} rx={3} fill={zone === "A" ? "#1d4ed8" : zone === "B" ? "#047857" : "#92400e"} opacity={0.72} />
-          {Array.from({ length: Math.max(2, Math.floor(block.w / 8)) }).map((_, col) => (
-            <rect
-              key={col}
-              x={block.x + 5 + col * 8}
-              y={block.y + 7}
-              width={3}
-              height={block.h - 14}
-              rx={1}
-              fill={zone === "A" ? "#93c5fd" : zone === "B" ? "#86efac" : "#fde68a"}
-              opacity={(col + index) % 3 === 0 ? 0.28 : 0.56}
-            />
-          ))}
+    <g>
+      {cars.map((c, i) => (
+        <g key={i} filter="url(#soft-glow)">
+          <rect x={-5} y={-2} width={10} height={4} rx={2} fill={c.color} opacity={0.95} />
+          <animateMotion dur={`${c.dur}s`} begin={`${c.begin}s`} repeatCount="indefinite" path={c.path} rotate="auto" />
         </g>
       ))}
     </g>
   )
 }
 
-function ZonePanel({ zone, pop }: { zone: ZoneKey; pop: number }) {
-  const z = ZONES[zone]
-  const occupancy = Math.min(1, pop / z.capacity)
+function ZonePanel({ zone, pop, avg }: { zone: ZoneKey; pop: number; avg: number | null }) {
+  const L = LAYOUT[zone]
+  const meta = ZONE_META[zone]
+  const fill = Math.min(1, pop / meta.capacity)
+  const base = L.y + L.bldBase
 
   return (
     <g>
-      <rect x={z.x - 4} y={z.y - 4} width={z.w + 8} height={z.h + 8} rx={16} fill={z.accent} opacity={0.08} />
-      <rect x={z.x} y={z.y} width={z.w} height={z.h} rx={14} fill={z.bg} stroke={z.border} strokeWidth={2} />
-      <rect x={z.x + 1} y={z.y + 1} width={z.w - 2} height={32} rx={13} fill={z.accent} opacity={0.32} />
-      <rect x={z.x + 1} y={z.y + 22} width={z.w - 2} height={12} fill={z.accent} opacity={0.32} />
-      <text x={z.x + 16} y={z.y + 20} fontSize={13} fill={z.border} fontWeight={800}>{z.label}</text>
-      <text x={z.x + z.w - 16} y={z.y + 20} fontSize={10} fill="#cbd5e1" textAnchor="end">{pop} / {z.capacity}</text>
-      <text x={z.x + 16} y={z.y + 48} fontSize={9} fill="#94a3b8" fontWeight={700}>{z.sub}</text>
-      <rect x={z.x + z.w - 76} y={z.y + 42} width={58} height={5} rx={3} fill="#0f172a" opacity={0.8} />
-      <rect x={z.x + z.w - 76} y={z.y + 42} width={58 * occupancy} height={5} rx={3} fill={z.border} opacity={0.9} />
-      <ParcelGrid zone={zone} />
-      <DistrictBlocks zone={zone} />
-    </g>
-  )
-}
+      <rect x={L.x - 6} y={L.y - 6} width={L.w + 12} height={L.h + 12} rx={20} fill={meta.color} opacity={0.1} filter="url(#blur-glow)" />
+      <rect x={L.x} y={L.y} width={L.w} height={L.h} rx={14} fill="#0a1222" />
+      <rect x={L.x} y={L.y} width={L.w} height={L.h} rx={14} fill={`url(#zone-${zone})`} stroke={meta.color} strokeOpacity={0.75} strokeWidth={1.5} />
 
-function CitizenDots({ citizens, zone }: { citizens: Citizen[]; zone: ZoneKey }) {
-  const cfg = GRID[zone]
-  const zoneCitizens = citizens.filter((citizen) => citizen.zone === zone)
+      {/* header */}
+      <text x={L.x + 16} y={L.y + 22} fontSize={13} fill={meta.color} fontWeight={800}>{meta.name}</text>
+      <text x={L.x + 16} y={L.y + 36} fontSize={8} fill="#8fa0bb" fontWeight={600} letterSpacing={0.8}>{meta.sub.toUpperCase()}</text>
+      <text x={L.x + L.w - 16} y={L.y + 22} fontSize={11} fill="#e2e8f0" textAnchor="end" fontWeight={700} fontFamily="var(--font-geist-mono), monospace">
+        {pop}/{meta.capacity}
+      </text>
+      <rect x={L.x + L.w - 76} y={L.y + 30} width={60} height={4} rx={2} fill="#0f172a" />
+      <rect x={L.x + L.w - 76} y={L.y + 30} width={60 * fill} height={4} rx={2} fill={meta.color} style={{ transition: "width .8s" }} />
+      {avg !== null && (
+        <circle cx={L.x + L.w - 86} cy={L.y + 32} r={3} fill={moodColor(avg)} filter="url(#soft-glow)" />
+      )}
 
-  return (
-    <g>
-      {zoneCitizens.map((citizen, index) => {
-        const col = index % cfg.cols
-        const row = Math.floor(index / cfg.cols)
-        const cx = cfg.ox + col * DOT_GAP
-        const cy = cfg.oy + row * DOT_GAP
-        const fill = HAPPINESS_FILL(citizen.happiness)
-        const stroke = HAPPINESS_STROKE(citizen.happiness)
-
+      {/* buildings */}
+      {BUILDINGS[zone].map((b, i) => {
+        const bx = L.x + b.dx
+        const by = base - b.h
+        const cols = Math.max(2, Math.floor((b.w - 6) / 6))
+        const rows = Math.max(2, Math.floor((b.h - 6) / 8))
         return (
-          <g key={citizen.id}>
-            <circle cx={cx} cy={cy} r={DOT_R + 4} fill={fill} opacity={0.15} />
-            <circle cx={cx} cy={cy} r={DOT_R} fill={fill} stroke={stroke} strokeWidth={1.5} opacity={0.96}>
-              {citizen.pending_reaction && (
-                <animate attributeName="r" values={`${DOT_R};${DOT_R + 3};${DOT_R}`} dur="1s" repeatCount="indefinite" />
-              )}
-            </circle>
-            <circle cx={cx - 1.8} cy={cy - 1.8} r={1.8} fill="white" opacity={0.42} />
-            <title>{citizen.name} · {citizen.job_type.replace("_", " ")} · happiness {citizen.happiness.toFixed(0)}{citizen.pending_reaction ? " · thinking..." : ""}</title>
+          <g key={i}>
+            <rect x={bx} y={by} width={b.w} height={b.h} rx={2.5} fill={meta.color} opacity={0.16} />
+            <rect x={bx} y={by} width={b.w} height={b.h} rx={2.5} fill="none" stroke={meta.color} strokeOpacity={0.45} strokeWidth={0.8} />
+            {Array.from({ length: rows * cols }).map((_, n) => {
+              const r = Math.floor(n / cols)
+              const c = n % cols
+              return (
+                <rect
+                  key={n}
+                  className="win"
+                  x={bx + 4 + c * 6}
+                  y={by + 5 + r * 8}
+                  width={3}
+                  height={4}
+                  rx={0.6}
+                  fill={meta.color}
+                  style={{ animationDelay: `${((n * 7 + i * 13 + (zone === "A" ? 0 : zone === "B" ? 3 : 6)) % 40) / 10}s`, animationDuration: `${3 + ((n + i) % 4)}s` }}
+                />
+              )
+            })}
           </g>
         )
       })}
-    </g>
-  )
-}
-
-function Legend() {
-  const items = [
-    { color: "#4ade80", label: "Happy" },
-    { color: "#fbbf24", label: "Stable" },
-    { color: "#fb7185", label: "At risk" },
-  ]
-
-  return (
-    <g transform={`translate(58, ${H - 32})`}>
-      <rect x={-14} y={-14} width={430} height={30} rx={10} fill="#0f172a" opacity={0.86} stroke="#1e293b" />
-      {items.map(({ color, label }, index) => (
-        <g key={label} transform={`translate(${index * 96}, 0)`}>
-          <circle cx={6} cy={0} r={6} fill={color} />
-          <text x={18} y={4} fontSize={10} fill="#cbd5e1" fontWeight={700}>{label}</text>
-        </g>
-      ))}
-      <circle cx={318} cy={0} r={3} fill="#94a3b8" opacity={0.65} />
-      <text x={328} y={4} fontSize={10} fill="#94a3b8">pulse = thinking</text>
-    </g>
-  )
-}
-
-function Compass() {
-  return (
-    <g transform="translate(704, 72)">
-      <circle cx={0} cy={0} r={22} fill="#0f172a" stroke="#334155" />
-      <path d="M0 -14 L6 8 L0 4 L-6 8 Z" fill="#cbd5e1" />
-      <text x={0} y={35} textAnchor="middle" fontSize={9} fill="#94a3b8" fontWeight={800}>N</text>
+      <line x1={L.x + 10} x2={L.x + L.w - 10} y1={base + 4} y2={base + 4} stroke={meta.color} strokeOpacity={0.25} />
     </g>
   )
 }
@@ -314,38 +237,132 @@ function Compass() {
 interface Props {
   citizens: Citizen[]
   zonePops: { A: number; B: number; C: number }
+  highlightId: string | null
+  onHover: (id: string | null) => void
 }
 
-export default function CityMap({ citizens, zonePops }: Props) {
+export default function CityMap({ citizens, zonePops, highlightId, onHover }: Props) {
+  const [glow, setGlow] = useState(true)
+  const [localHover, setLocalHover] = useState<string | null>(null)
+  const slots = useMemo(() => layoutDots(citizens), [citizens])
+
+  const avg = useMemo(() => {
+    const out: Record<ZoneKey, number | null> = { A: null, B: null, C: null }
+    for (const z of ZONE_KEYS) {
+      const m = citizens.filter((c) => c.zone === z)
+      out[z] = m.length ? m.reduce((s, c) => s + c.happiness, 0) / m.length : null
+    }
+    return out
+  }, [citizens])
+
+  const activeId = localHover ?? highlightId
+  const active = slots.find((s) => s.citizen.id === activeId)
+
+  const hover = (id: string | null) => {
+    setLocalHover(id)
+    onHover(id)
+  }
+
   return (
-    <section className="glass-panel overflow-hidden rounded-2xl p-4">
-      <div className="mb-3 flex items-end justify-between gap-3 px-1">
+    <section className="panel fade-up overflow-hidden rounded-2xl p-4" style={{ animationDelay: "300ms" }}>
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-3 px-1">
         <div>
           <h2 className="text-base font-semibold text-white">City Map</h2>
-          <p className="text-xs text-slate-400">Live zoning, roads, parcels, and citizen sentiment</p>
+          <p className="text-xs text-slate-400">Live zoning, traffic and citizen sentiment — dots glide as citizens move</p>
         </div>
-        <span className="hidden rounded-full border border-slate-600/70 bg-slate-950/40 px-3 py-1 text-xs font-semibold text-slate-300 sm:inline-flex">
-          Urban plan view
+        <button className="chip focus-ring" data-active={glow} onClick={() => setGlow((g) => !g)} aria-pressed={glow}>
+          Sentiment glow
+        </button>
+      </div>
+
+      <div className="relative overflow-hidden rounded-xl border border-white/[0.08]">
+        <svg viewBox={`0 0 ${W} ${H}`} className="block w-full" role="img" aria-label="City map with zones, roads, and citizen happiness markers">
+          <Defs />
+          <Ground />
+          {ZONE_KEYS.map((z) => (
+            <ZonePanel key={z} zone={z} pop={zonePops[z]} avg={avg[z]} />
+          ))}
+          <Roads />
+          <Traffic />
+
+          {glow && (
+            <g filter="url(#blur-glow)" opacity={0.55} style={{ pointerEvents: "none" }}>
+              {slots.map(({ citizen, x, y }) => (
+                <circle key={citizen.id} cx={x} cy={y} r={11} fill={moodColor(citizen.happiness)} opacity={0.5} />
+              ))}
+            </g>
+          )}
+
+          {slots.map(({ citizen, x, y }) => {
+            const color = moodColor(citizen.happiness)
+            const on = citizen.id === activeId
+            return (
+              <g
+                key={citizen.id}
+                className="map-dot"
+                style={{ transform: `translate(${x}px, ${y}px)` }}
+                onMouseEnter={() => hover(citizen.id)}
+                onMouseLeave={() => hover(null)}
+              >
+                <circle r={DOT_R + 5} fill="transparent" />
+                {on && <circle r={DOT_R + 4} fill="none" stroke="#fff" strokeOpacity={0.9} strokeWidth={1.5} />}
+                {citizen.pending_reaction && <circle className="think-ring" r={DOT_R} stroke={color} />}
+                <circle className="core" r={on ? DOT_R + 1 : DOT_R} fill={color} stroke="#04070d" strokeWidth={1.5} />
+                <circle cx={-1.8} cy={-1.8} r={1.7} fill="#fff" opacity={0.5} />
+              </g>
+            )
+          })}
+
+          {active && <Tooltip slot={active} />}
+
+          {/* compass */}
+          <g transform="translate(700, 452)" opacity={0.85}>
+            <circle r={16} fill="#0b1324" stroke="#334766" />
+            <path d="M0 -10 L4.5 6 L0 3 L-4.5 6 Z" fill="#cbd5e1" />
+            <text y={-19} textAnchor="middle" fontSize={7} fill="#7e8fab" fontWeight={800}>N</text>
+          </g>
+          <rect width={W} height={H} fill="url(#vignette)" pointerEvents="none" />
+        </svg>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 px-1 text-xs text-slate-300">
+        {[
+          { c: MOOD.happy, l: "Happy  ≥ 60" },
+          { c: MOOD.stable, l: "Stable  35–60" },
+          { c: MOOD.risk, l: "At risk  < 35" },
+        ].map(({ c, l }) => (
+          <span key={l} className="flex items-center gap-2 font-medium">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: c, boxShadow: `0 0 10px ${c}` }} />
+            {l}
+          </span>
+        ))}
+        <span className="flex items-center gap-2 text-slate-400">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-slate-300 opacity-60" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-slate-400" />
+          </span>
+          thinking (waiting for AI)
         </span>
       </div>
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="w-full rounded-xl border border-slate-700/60 shadow-inner"
-        style={{ background: "#081321", maxHeight: "520px" }}
-        role="img"
-        aria-label="City zoning map with roads, parcels, and citizen happiness markers"
-      >
-        <BasePlan />
-        {(["A", "B", "C"] as ZoneKey[]).map((zone) => (
-          <ZonePanel key={zone} zone={zone} pop={zonePops[zone]} />
-        ))}
-        <Roads />
-        {(["A", "B", "C"] as ZoneKey[]).map((zone) => (
-          <CitizenDots key={zone} citizens={citizens} zone={zone} />
-        ))}
-        <Compass />
-        <Legend />
-      </svg>
     </section>
+  )
+}
+
+function Tooltip({ slot }: { slot: Slot }) {
+  const { citizen: c, x, y } = slot
+  const job = c.job_type.replace(/_/g, " ")
+  const tw = 150
+  const th = 44
+  const tx = Math.min(W - tw - 6, Math.max(6, x - tw / 2))
+  const ty = y - th - 14 < 8 ? y + 16 : y - th - 14
+  return (
+    <g style={{ pointerEvents: "none" }} transform={`translate(${tx} ${ty})`}>
+      <rect width={tw} height={th} rx={8} fill="#060b16" stroke={moodColor(c.happiness)} strokeOpacity={0.7} opacity={0.96} />
+      <text x={10} y={17} fontSize={11} fill="#fff" fontWeight={700}>{c.name}</text>
+      <text x={10} y={32} fontSize={9} fill="#94a3b8" style={{ textTransform: "capitalize" }}>{job}</text>
+      <text x={tw - 10} y={32} fontSize={10} textAnchor="end" fill={moodColor(c.happiness)} fontWeight={800} fontFamily="var(--font-geist-mono), monospace">
+        {c.happiness.toFixed(0)}
+      </text>
+    </g>
   )
 }
