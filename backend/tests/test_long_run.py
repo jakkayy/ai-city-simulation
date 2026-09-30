@@ -3,6 +3,7 @@ Long-run balance checks. The city used to settle into a fixed point (everyone at
 happiness 100, fund in the millions, debts of -100k); these tests run hundreds of
 simulated days with no database and no LLM and assert that it stays interesting.
 """
+import functools
 import random
 import uuid
 from datetime import date, timedelta
@@ -37,6 +38,11 @@ def make_city(seed: int) -> list[Citizen]:
     return citizens
 
 
+@functools.lru_cache(maxsize=None)
+def _cached(days: int, seed: int):
+    return simulate(days, seed)
+
+
 def simulate(days: int, seed: int = 1, **state_kwargs):
     random.seed(seed)
     citizens = make_city(seed)
@@ -59,46 +65,46 @@ def simulate(days: int, seed: int = 1, **state_kwargs):
 @pytest.mark.parametrize("seed", [1, 2, 3])
 class TestDefaultPolicyStaysBalanced:
     def test_happiness_is_not_pinned_at_the_ceiling(self, seed):
-        _, _, h = simulate(600, seed)
+        _, _, h = _cached(600, seed)
         tail = [p["happiness"] for p in h[-200:]]
         assert max(tail) < 95
 
     def test_happiness_is_not_collapsed(self, seed):
-        _, _, h = simulate(600, seed)
+        _, _, h = _cached(600, seed)
         tail = [p["happiness"] for p in h[-200:]]
         assert min(tail) > 30
 
     def test_fund_does_not_explode(self, seed):
-        _, _, h = simulate(600, seed)
+        _, _, h = _cached(600, seed)
         assert max(p["fund"] for p in h) < 150_000
 
     def test_debt_is_bounded(self, seed):
-        citizens, _, h = simulate(600, seed)
+        citizens, _, h = _cached(600, seed)
         for c in citizens:
             assert c.savings >= savings_floor(c) * 1.5 - 500
 
     def test_wealth_is_bounded(self, seed):
-        citizens, _, _ = simulate(600, seed)
+        citizens, _, _ = _cached(600, seed)
         assert max(c.savings for c in citizens) < 80_000
 
     def test_citizens_are_not_all_the_same(self, seed):
-        citizens, _, _ = simulate(600, seed)
+        citizens, _, _ = _cached(600, seed)
         values = [c.happiness for c in citizens]
         assert max(values) - min(values) > 10
 
     def test_city_keeps_producing_events(self, seed):
-        _, _, h = simulate(600, seed)
+        _, _, h = _cached(600, seed)
         late_events = sum(len(p["events"]) for p in h[-300:])
         assert late_events > 50
 
     def test_unemployment_exists_but_is_not_universal(self, seed):
-        citizens, _, _ = simulate(600, seed)
+        citizens, _, _ = _cached(600, seed)
         jobless = sum(c.job_type == JobType.unemployed for c in citizens)
         assert jobless < 25
 
     def test_zone_capacities_never_exceeded(self, seed):
         from app.simulation.constants import ZONE_CAPACITY
-        citizens, _, _ = simulate(600, seed)
+        citizens, _, _ = _cached(600, seed)
         for zone in Zone:
             assert sum(c.zone == zone for c in citizens) <= max(ZONE_CAPACITY[zone], 30)
 
@@ -106,7 +112,6 @@ class TestDefaultPolicyStaysBalanced:
 class TestPoliciesMatter:
     def test_high_taxes_make_citizens_unhappier(self):
         _, _, base = simulate(300, 7)
-        _, _, heavy = simulate(300, 7)   # same seed, same start
         random.seed(7)
         citizens = make_city(7)
         state = CityState(city_fund=10_000.0, service_quality=70.0, tax_rate=0.45)
@@ -120,3 +125,45 @@ class TestPoliciesMatter:
         _, _, b = simulate(120, 5)
         assert [round(p["happiness"], 6) for p in a] == [round(p["happiness"], 6) for p in b]
         assert [round(p["fund"], 4) for p in a] == [round(p["fund"], 4) for p in b]
+
+
+class TestEventsCarryStructuredData:
+    """The UI translates events from `data`, so every known event type must provide it."""
+
+    REQUIRED = {
+        "job_recovery": {"name", "job"},
+        "job_loss": {"name"},
+        "bankruptcy": {"name"},
+        "migration": {"name", "from", "to"},
+        "migration_waitlisted": {"name", "to"},
+        "city_event": {"kind"},
+    }
+
+    def test_every_event_has_the_data_the_ui_needs(self):
+        import json
+
+        seen = set()
+        for seed in (1, 2):
+            _, _, history = _cached(500, seed)
+            for point in history:
+                for ev in point["events"]:
+                    kind = ev["event_type"]
+                    if kind not in self.REQUIRED:
+                        continue
+                    seen.add(kind)
+                    assert self.REQUIRED[kind] <= set(ev["data"]), (kind, ev)
+                    json.dumps(ev["data"])        # must survive the socket
+        assert {"job_loss", "job_recovery", "city_event", "migration_waitlisted"} <= seen
+
+    def test_city_event_kinds_carry_their_numbers(self):
+        needed = {"recession": "days", "boom": "days", "disaster": "cost", "grant": "amount"}
+        found = set()
+        for seed in range(1, 5):
+            _, _, history = _cached(500, seed)
+            for point in history:
+                for ev in point["events"]:
+                    if ev["event_type"] == "city_event":
+                        k = ev["data"]["kind"]
+                        assert needed[k] in ev["data"]
+                        found.add(k)
+        assert found == set(needed)
