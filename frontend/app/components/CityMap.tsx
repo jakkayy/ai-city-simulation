@@ -349,7 +349,7 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover, serv
     { label: t("map.factory"), n: counts.laborer, c: "#f97316" },
     { label: t("map.farm"), n: counts.farmer, c: "#a3e635" },
     { label: t("map.cbd"), n: counts.business, c: "#22d3ee" },
-    { label: t("map.services"), n: counts.service, c: "#7dd3fc" },
+    { label: t("map.marketLegend"), n: counts.service, c: "#c084fc" },
     { label: t("job.unemployed"), n: counts.unemployed, c: "#94a3b8" },
   ]
 
