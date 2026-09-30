@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "AI City Simulation",
-  description: "Simulated city with 50 AI citizen agents",
+  description: "A living city of 50 AI citizen agents — enact policies and watch them react",
 };
 
 export default function RootLayout({
