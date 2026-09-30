@@ -1,40 +1,57 @@
 # AI City Simulation
 
-A simulated city with 50 AI citizen agents powered by Groq LLMs. Citizens react to city policies, migrate between zones, and generate real-time events — visible through a live dashboard.
+เมืองจำลองที่มีประชากร 50 คนเป็น AI agent ขับเคลื่อนด้วย LLM (Groq) แต่ละคนมีอาชีพ นิสัย เงินเก็บ และความสุขของตัวเอง คุณเล่นเป็นผู้บริหารเมือง ออกนโยบายแล้วดูว่าประชากรตอบสนองอย่างไร ย้ายโซนไหน และเมืองรุ่งหรือล่ม ทั้งหมดดูได้สดผ่านแดชบอร์ด
 
-## Architecture
+## สิ่งที่ทำได้
+
+- **ประชากร 50 คน** มีอาชีพ นิสัย เงินเก็บ ความสุข และความจำของตัวเอง
+- **3 โซน** A (คนรวย, จุ 15), B (ชนชั้นกลาง, จุ 20), C (แรงงาน, จุ 30) ประชากรย้ายโซนตามฐานะและความสุข เต็มแล้วต้องเข้าคิว
+- **ออกนโยบาย** ขึ้น/ลดภาษี เพิ่ม/ลดบริการสาธารณะ โครงการที่อยู่อาศัย โครงการสร้างงาน
+- **City Manager** เสนอนโยบายทุก 7 วัน (ผ่าน LLM) กดใช้ได้ทันทีจากแดชบอร์ด
+- **Policy Advisor** ให้คำแนะนำเมื่อเข้าสู่วิกฤต (ความสุขเฉลี่ยต่ำ)
+- **ระบบวิกฤต** แจ้งเตือน warning / critical / collapse ตามความสุขเฉลี่ย
+- **Replay** เล่นย้อนจากวันที่บันทึกไว้ โดยไม่เรียก LLM (ใช้กฎสำรองแทน)
+- **แดชบอร์ดเรียลไทม์** กราฟแนวโน้ม แผนที่เมืองที่ประชากรเคลื่อนที่ข้ามโซนแบบ smooth ฟีดเหตุการณ์ และตัวกรองรายชื่อประชากร
+
+> หมายเหตุ: Replay คืนค่าเฉพาะงบเมืองและคุณภาพบริการ ยังไม่ได้คืนสถานะของประชากรแต่ละคน จึงยังไม่ใช่การเล่นซ้ำที่เหมือนเดิมทุกประการ
+
+## สถาปัตยกรรม
 
 ```
 Next.js (frontend) ──── nginx ──── FastAPI + socket.io (backend) ──── PostgreSQL
                                           │
                                    Groq LLM Gateway
-                                  (3 keys, round-robin)
+                                  (สูงสุด 3 key, round-robin)
 ```
 
-- **Backend**: FastAPI, SQLAlchemy async, Alembic, APScheduler, python-socketio
-- **Frontend**: Next.js 15, TypeScript, Tailwind CSS
-- **LLM**: Groq (llama-3.1-8b-instant), 3-account round-robin — 90 RPM / 3000 RPD per key
-- **Simulation tick**: every 10 s (configurable), runs economy → migration → happiness → snapshot → LLM reactions
+- **Backend:** FastAPI, SQLAlchemy (async), Alembic, APScheduler, python-socketio
+- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS 4
+- **LLM:** Groq (llama-3.1-8b-instant สำหรับประชากร, llama-3.3-70b-versatile สำหรับ City Manager / Advisor) โควตา 90 RPM / 3000 RPD ต่อ key
+- **1 tick = 1 วันในเกม** ทุก 10 วินาที (ปรับได้) ลำดับ: เศรษฐกิจ → ย้ายโซน → ความสุข → บันทึก snapshot → LLM ตอบสนอง
 
-## Features
+## โครงสร้างโปรเจค
 
-- **50 AI Citizens** — each with personality, job, zone, savings, and memory
-- **Zone System** — Zone A (affluent), B (middle), C (working); citizens migrate based on finances
-- **Policy Engine** — enact tax, service, housing, and job policies from the dashboard
-- **City Manager Agent** — proposes policies every 7 days via LLM
-- **Policy Advisor** — activates on crisis (avg happiness < 35), gives strategic advice
-- **Replay Mode** — replay any past day deterministically without LLM calls
-- **Crisis System** — warning / critical / collapse banners based on avg happiness
+```
+backend/
+  app/api/          REST endpoints (simulation, policies, citizens, agents, gateway)
+  app/simulation/   ตัวเกมหลัก: loop, economy, zones, policy_engine, citizen_ai, agents, gateway
+  app/models/       SQLAlchemy models
+  alembic/          database migrations
+  tests/            pytest (122 เทสต์)
+frontend/app/
+  components/       Dashboard, CityMap, StatCards, EventFeed, ...
+  lib/              useSimulation (state + socket), api, types
+```
 
-## Local Development
+## เริ่มพัฒนาบนเครื่อง
 
-### Prerequisites
+### ต้องมี
 
 - Python 3.12+
 - Node.js 20+
-- Docker (for PostgreSQL)
+- Docker (สำหรับ PostgreSQL)
 
-### 1. Start the database
+### 1. เปิดฐานข้อมูล
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d
@@ -47,15 +64,20 @@ cd backend
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-# copy and fill in your Groq API keys
-cp ../.env.production.example ../.env.development
-# edit .env.development — add GROQ_API_KEY_1, GROQ_API_KEY_2, GROQ_API_KEY_3
+# สร้างไฟล์ backend/.env แล้วใส่ Groq API key
+# (backend อ่าน .env จากโฟลเดอร์ที่รัน uvicorn)
+cat > .env <<'EOF'
+GROQ_API_KEY_1=gsk_...
+GROQ_API_KEY_2=
+GROQ_API_KEY_3=
+EOF
 
 alembic upgrade head
 uvicorn app.main:socket_app --reload
 ```
 
-> Citizens are seeded automatically on first startup if the DB is empty.
+- ไม่ใส่ Groq key ก็รันได้ ประชากรจะใช้กฎสำรองแทน LLM
+- ครั้งแรกที่รัน ถ้าฐานข้อมูลว่าง ระบบสร้างประชากร 50 คนให้อัตโนมัติ
 
 ### 3. Frontend
 
@@ -65,33 +87,32 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+เปิด [http://localhost:3000](http://localhost:3000) แล้วกด **Start** (หรือ **Step** เพื่อเดินทีละวัน)
 
-## Environment Variables
+## ตัวแปรสภาพแวดล้อม
 
-| Variable | Description |
+| ตัวแปร | คำอธิบาย |
 |---|---|
 | `DATABASE_URL` | PostgreSQL async URL |
-| `GROQ_API_KEY_1/2/3` | Groq API keys (up to 3 for round-robin) |
-| `CORS_ORIGINS` | Comma-separated allowed origins (default: `http://localhost:3000`) |
-| `ENV` | `development` or `production` |
-| `NEXT_PUBLIC_API_URL` | Backend URL baked at frontend build time (empty = same origin via nginx) |
+| `GROQ_API_KEY_1/2/3` | Groq API key (ใส่ได้ถึง 3 ตัว สลับกันใช้) |
+| `CORS_ORIGINS` | origin ที่อนุญาต คั่นด้วยจุลภาค (ค่าเริ่มต้น `http://localhost:3000`) |
+| `ENV` | `development` หรือ `production` |
+| `NEXT_PUBLIC_API_URL` | URL ของ backend ที่ฝังตอน build frontend (ว่าง = same origin ผ่าน nginx) |
 
-See `.env.production.example` for the full template.
+ดูแม่แบบเต็มที่ `.env.production.example`
 
-## Production Deployment (Docker)
+## Deploy บน production (Docker)
 
 ```bash
-# on the server
 cp .env.production.example .env.production
-# edit .env.production with real keys and passwords
+# แก้ .env.production ใส่ key และรหัสผ่านจริง
 
 docker compose up -d --build
 ```
 
-nginx serves the frontend on port 80 and proxies `/api` and `/socket.io` to the backend.
+nginx เสิร์ฟ frontend ที่พอร์ต 80 และ proxy `/api` กับ `/socket.io` ไปที่ backend
 
-## Running Tests
+## รันเทสต์
 
 ```bash
 cd backend
@@ -99,11 +120,18 @@ source venv/bin/activate
 pytest tests/ -v
 ```
 
-122 tests across economy, zones, gateway, citizen AI, policy engine, agents, and replay.
+122 เทสต์ ครอบคลุม economy, zones, gateway, citizen AI, policy engine, agents และ replay
+
+ฝั่ง frontend:
+
+```bash
+cd frontend
+npx tsc --noEmit && npm run lint
+```
 
 ## CI/CD
 
-- **CI** (`.github/workflows/ci.yml`): runs on push to `develop`/`main` and PRs to `main` — backend pytest + frontend type-check
-- **CD** (`.github/workflows/cd.yml`): deploys to EC2 on push to `main` via SSH
+- **CI** (`.github/workflows/ci.yml`) รันเมื่อ push เข้า `develop`/`main` และ PR เข้า `main` ทำ pytest ฝั่ง backend และ type-check ฝั่ง frontend
+- **CD** (`.github/workflows/cd.yml`) deploy ขึ้น EC2 ผ่าน SSH เมื่อ push เข้า `main`
 
-Required GitHub Secrets: `EC2_HOST`, `EC2_USER`, `EC2_KEY`, `POSTGRES_PASSWORD`, `GROQ_API_KEY_1/2/3`
+GitHub Secrets ที่ต้องตั้ง: `EC2_HOST`, `EC2_USER`, `EC2_KEY`, `POSTGRES_PASSWORD`, `GROQ_API_KEY_1/2/3`
