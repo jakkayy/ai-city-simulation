@@ -35,6 +35,7 @@ export interface SimStatus {
   city_fund: number
   service_quality: number
   tax_rate: number
+  tick_interval_seconds: number
 }
 
 export interface DailySnapshot {

@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useI18n } from "../lib/i18n"
 import AnimatedNumber from "./AnimatedNumber"
 import LangToggle from "./LangToggle"
@@ -20,6 +21,38 @@ interface Props {
   onPolicyEnacted: () => void
   onReplayChange: () => void
   onOpenGuide: () => void
+  speed: number
+  onSpeed: (seconds: number) => void
+  onReset: () => void
+}
+
+const SPEEDS = [
+  { key: "slow", seconds: 20 },
+  { key: "normal", seconds: 10 },
+  { key: "fast", seconds: 5 },
+  { key: "turbo", seconds: 2 },
+] as const
+
+function ResetButton({ disabled, onReset }: { disabled: boolean; onReset: () => void }) {
+  const { t } = useI18n()
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    if (!armed) return
+    const id = setTimeout(() => setArmed(false), 4000)
+    return () => clearTimeout(id)
+  }, [armed])
+  return (
+    <button
+      className={`btn focus-ring ${armed ? "btn-danger" : ""}`}
+      disabled={disabled}
+      title={t("reset.hint")}
+      onClick={() => {
+        if (armed) { setArmed(false); onReset() } else setArmed(true)
+      }}
+    >
+      {armed ? t("reset.confirm") : t("reset.btn")}
+    </button>
+  )
 }
 
 function StatusPill({ connected, isRunning, replayMode }: Pick<Props, "connected" | "isRunning" | "replayMode">) {
@@ -88,6 +121,20 @@ export default function Header(p: Props) {
           />
           {!p.replayMode && (
             <>
+              <div className="flex h-[2.4rem] items-center rounded-xl border border-slate-400/20 bg-slate-800/50 p-0.5" role="group" aria-label={t("speed.label")}>
+                {SPEEDS.map((sp) => (
+                  <button
+                    key={sp.key}
+                    onClick={() => p.onSpeed(sp.seconds)}
+                    aria-pressed={p.speed === sp.seconds}
+                    title={t("speed.hint", { s: sp.seconds })}
+                    className={`focus-ring h-full rounded-[0.6rem] px-2.5 text-xs font-bold transition ${p.speed === sp.seconds ? "bg-cyan-300 text-slate-950" : "text-slate-400 hover:text-white"}`}
+                  >
+                    {t(`speed.${sp.key}`)}
+                  </button>
+                ))}
+              </div>
+              <ResetButton disabled={p.isRunning || p.busy} onReset={p.onReset} />
               <button onClick={p.onStep} disabled={p.isRunning || p.busy} className="btn focus-ring" title={t("btn.step.hint")}>
                 {t("btn.step")}
               </button>
