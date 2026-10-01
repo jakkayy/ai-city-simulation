@@ -132,24 +132,17 @@ nginx เสิร์ฟ frontend ที่พอร์ต 80 และ proxy `/
 
 > ถ้ามี deployment เดิมอยู่แล้ว ให้ใส่ `COMPOSE_PROJECT_NAME=<ชื่อโปรเจคเดิม>` ใน `~/ai-city.env` (ดูชื่อจาก `docker compose ls`) ไม่เช่นนั้น Docker จะสร้างฐานข้อมูลใหม่และข้อมูลเมืองเดิมจะไม่ถูกใช้
 
-### Auto deploy ด้วย self-hosted runner
+### อัปเดตเวอร์ชันที่ deploy อยู่
 
-เมื่อ push เข้า `main` และ CI ผ่าน, workflow CD (`.github/workflows/cd.yml`) จะสั่งให้คอมที่บ้าน build และรันใหม่เอง โดยไม่ต้องเปิดพอร์ตเข้าบ้าน (runner ดึงงานออกไปหา GitHub)
+```bash
+scripts/deploy.sh      # git pull + build ใหม่ + รอ health check
+```
 
-ตั้งค่าครั้งเดียวบนคอมที่บ้าน (Linux):
+สคริปต์เตือนถ้าใน `~/ai-city.env` ไม่มี `GROQ_API_KEY_*` (ประชากรจะใช้กฎสำรองแทน LLM)
 
-1. ติดตั้ง Docker และให้ผู้ใช้รัน docker ได้โดยไม่ต้อง sudo: `sudo usermod -aG docker $USER` แล้วล็อกอินใหม่
-2. ไปที่ GitHub repo → Settings → Actions → Runners → **New self-hosted runner** เลือก Linux แล้วรันคำสั่งที่หน้านั้นให้ทีละบรรทัด
-3. ติดตั้งให้รันเป็นบริการ จะได้เปิดเครื่องแล้วทำงานเองหลังรีบูต:
-   ```bash
-   cd ~/actions-runner
-   sudo ./svc.sh install && sudo ./svc.sh start
-   ```
-4. สร้างไฟล์ env ไว้ที่ `~/ai-city.env` (ตามด้านบน) ถ้าไว้ที่อื่น ให้ตั้ง repository variable ชื่อ `ENV_FILE` เป็นพาธนั้น (Settings → Secrets and variables → Actions → Variables)
+> `docker compose` อ่านเฉพาะไฟล์ `.env` เองโดยอัตโนมัติ ไฟล์ความลับของโปรเจคนี้ (`~/ai-city.env`) ต้องส่งผ่าน `--env-file` เสมอ ถ้าลืม key จะว่างเปล่าแล้ว LLM จะไม่ถูกเรียกโดยไม่มี error ใดๆ ตรวจได้ด้วย `curl http://localhost/api/gateway/status` ต้องเห็น `keys` ไม่ว่าง และ `total_calls` เพิ่มขึ้นเมื่อเมืองเดิน
 
-Deploy ด้วยมือผ่าน GitHub ได้จากแท็บ Actions → CD → Run workflow
-
-> ความปลอดภัย: self-hosted runner รันโค้ดจาก workflow บนเครื่องคุณ ใช้กับ repo ส่วนตัวเท่านั้น อย่าเปิดให้ pull request จาก fork ภายนอกรัน workflow บนเครื่องนี้
+ไม่มี CD อัตโนมัติ repo นี้เป็น public การให้ GitHub สั่งรันโค้ดบนเครื่องที่บ้าน (self-hosted runner) จึงเสี่ยงโดยไม่จำเป็น อัปเดตด้วยมือผ่านสคริปต์ด้านบนเมื่อต้องการ
 
 ### สำรองและกู้ข้อมูล
 
@@ -185,7 +178,6 @@ cd frontend
 npx tsc --noEmit && npm run lint && npm test
 ```
 
-## CI/CD
+## CI
 
-- **CI** (`.github/workflows/ci.yml`) รันเมื่อ push เข้า `develop`/`main` และ PR เข้า `main` ทำ pytest ฝั่ง backend และ type-check ฝั่ง frontend
-- **CD** (`.github/workflows/cd.yml`) รันบน self-hosted runner หลัง CI ผ่านบน `main` (ดูวิธีตั้งค่าด้านบน) ไม่ต้องใช้ GitHub Secrets
+`.github/workflows/ci.yml` รันเมื่อ push เข้า `develop`/`main` และ PR เข้า `main` ทำ pytest ฝั่ง backend และ type-check + lint + เทสต์ฝั่ง frontend
