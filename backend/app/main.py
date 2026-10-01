@@ -7,12 +7,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
-from app.api import citizens, policies, gateway_status, simulation, agents
+from app.api import agents, citizens, gateway_status, history, policies, reports, simulation
 from app.db.database import engine, Base, AsyncSessionLocal
 from app.db.seed import seed_citizens
 from app.models.citizen import Citizen
 from app.simulation.gateway import build_gateway
-from app.simulation.loop import restore_from_snapshot, run_tick, set_socket_server
+from app.simulation.loop import run_tick, set_socket_server
+from app.simulation.snapshots import restore_from_snapshot
 from app.simulation.state import city_state
 import app.simulation.gateway as _gateway_module
 from app.core.config import settings
@@ -71,6 +72,8 @@ app.include_router(citizens.router, prefix="/api")
 app.include_router(policies.router, prefix="/api")
 app.include_router(gateway_status.router, prefix="/api")
 app.include_router(simulation.router, prefix="/api")
+app.include_router(history.router, prefix="/api")
+app.include_router(reports.router, prefix="/api")
 app.include_router(agents.router, prefix="/api")
 
 

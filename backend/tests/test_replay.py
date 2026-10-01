@@ -185,6 +185,8 @@ class TestReplayRoutingInLoop:
              patch("app.simulation.loop._emit", new_callable=AsyncMock), \
              patch("app.simulation.loop.city_manager") as mock_cm, \
              patch("app.simulation.loop.policy_advisor"), \
+             patch("app.simulation.loop.load_report_context", new_callable=AsyncMock, return_value=(None, [])), \
+             patch("app.simulation.loop.spawn_narrative") as mock_spawn, \
              patch("app.simulation.state._pending_updates", {}):
 
             mock_gw_mod.llm_gateway = mock_gateway
@@ -205,3 +207,6 @@ class TestReplayRoutingInLoop:
 
             mock_fb.assert_not_called()
             mock_llm.assert_called_once()
+            # a recorded day gets a report, and the LLM bulletin is requested for it
+            mock_spawn.assert_called_once()
+            assert mock_spawn.call_args.args[0]["day"] == 0

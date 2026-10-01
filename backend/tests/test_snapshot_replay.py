@@ -2,7 +2,8 @@
 import random
 from datetime import date, timedelta
 
-from app.simulation.loop import _apply_citizen_state, _citizen_state, build_snapshot_data, restore_city_from_data, run_day
+from app.simulation.loop import run_day
+from app.simulation.snapshots import apply_citizen_state, build_snapshot_data, citizen_state, restore_city_from_data
 from app.simulation.state import CityState, city_state, reset_city_state
 from tests.test_long_run import START, make_city
 
@@ -15,11 +16,11 @@ def test_citizen_state_roundtrip():
     citizens = make_city(3)
     src = citizens[0]
     src.zone_locked_until = date(2026, 3, 1)
-    data = _citizen_state(src)
+    data = citizen_state(src)
 
     other = make_city(99)[0]
-    _apply_citizen_state(other, data)
-    assert _citizen_state(other) == data
+    apply_citizen_state(other, data)
+    assert citizen_state(other) == data
 
 
 def test_replay_from_snapshot_is_exact():
@@ -35,7 +36,7 @@ def test_replay_from_snapshot_is_exact():
     def run_from_snapshot():
         cs = make_city(4)
         for c in cs:
-            _apply_citizen_state(c, saved[str(c.id)])
+            apply_citizen_state(c, saved[str(c.id)])
         st = _state()
         st.city_fund, st.service_quality = fund, service
         out = []

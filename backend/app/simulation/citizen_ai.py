@@ -12,7 +12,6 @@ import re
 from typing import Any
 
 from app.models.citizen import Citizen
-from app.simulation.constants import ZONE_HAPPINESS_MODIFIER
 from app.simulation.gateway import LLMGateway
 from app.simulation.state import queue_llm_update
 

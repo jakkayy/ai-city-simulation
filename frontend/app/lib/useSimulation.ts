@@ -5,6 +5,7 @@ import { getSocket } from "./socket"
 import { useI18n } from "./i18n"
 import {
   fetchCitizens,
+  fetchReports,
   fetchSnapshots,
   fetchStatus,
   resetCity,
@@ -13,10 +14,12 @@ import {
   stepSim,
   stopSim,
 } from "./api"
+import { addNarrative, addReport } from "./report"
 import type {
   AdvisorMessage,
   Citizen,
   CityManagerProposal,
+  DayReport,
   EventItem,
   HistoryPoint,
   SimStatus,
@@ -49,6 +52,8 @@ export function useSimulation() {
   const [status, setStatus] = useState<SimStatus | null>(null)
   const [citizens, setCitizens] = useState<Citizen[]>([])
   const [events, setEvents] = useState<EventItem[]>([])
+  const [reports, setReports] = useState<DayReport[]>([])
+  const [popupDay, setPopupDay] = useState<number | null>(null)
   const [history, setHistory] = useState<HistoryPoint[]>([])
   const connected = useSyncExternalStore(subscribeConnection, () => getSocket().connected, () => false)
   const [proposal, setProposal] = useState<CityManagerProposal | null>(null)
@@ -72,6 +77,7 @@ export function useSimulation() {
   // citizens + chart history over REST (page start, after a replay, after a reset)
   const reload = useCallback(() => {
     fetchCitizens().then(setCitizens).catch(() => {})
+    fetchReports().then(setReports).catch(() => {})
     fetchSnapshots()
       .then((snaps) =>
         setHistory(
@@ -110,6 +116,11 @@ export function useSimulation() {
         const rest = h.filter((p) => p.day !== data.day)
         return [...rest, point].slice(-MAX_HISTORY)
       })
+      if (data.report) {
+        const report = data.report
+        setReports((prev) => addReport(prev, report))
+        if (report.highlight) setPopupDay(report.day)
+      }
       if (data.events.length > 0) {
         const fresh = data.events.map((e) => ({ ...e, day: data.day, uid: ++uid.current }))
         setEvents((prev) => [...fresh, ...prev].slice(0, MAX_EVENTS))
@@ -117,9 +128,13 @@ export function useSimulation() {
     }
     const onProposal = (data: CityManagerProposal) => setProposal(data)
     const onAdvisor = (data: AdvisorMessage) => setAdvisorMsg(data)
+    const onNarrative = (m: { day: number; narrative: DayReport["narrative"] }) =>
+      setReports((prev) => addNarrative(prev, m.day, m.narrative))
     const onReset = () => {
       setTick(null)
       setEvents([])
+      setReports([])
+      setPopupDay(null)
       setHistory([])
       setProposal(null)
       setAdvisorMsg(null)
@@ -130,11 +145,13 @@ export function useSimulation() {
     socket.on("tick", onTick)
     socket.on("city_manager_proposal", onProposal)
     socket.on("advisor_message", onAdvisor)
+    socket.on("report_narrative", onNarrative)
     socket.on("city_reset", onReset)
     return () => {
       socket.off("tick", onTick)
       socket.off("city_manager_proposal", onProposal)
       socket.off("advisor_message", onAdvisor)
+      socket.off("report_narrative", onNarrative)
       socket.off("city_reset", onReset)
     }
   }, [reload, refreshStatus])
@@ -155,6 +172,7 @@ export function useSimulation() {
     [refreshStatus, toast, t],
   )
 
+  const closeReportPopup = useCallback(() => setPopupDay(null), [])   // stable: the popup timer depends on it
   const start = useCallback(() => act(() => startSim(speedRef.current), t("toast.started")), [act, t])
   const stop = useCallback(() => act(stopSim, t("toast.paused")), [act, t])
   const step = useCallback(() => act(stepSim), [act])
@@ -173,6 +191,9 @@ export function useSimulation() {
     status,
     citizens,
     events,
+    reports,
+    popupReport: reports.find((r) => r.day === popupDay) ?? null,
+    closeReportPopup,
     history,
     connected,
     proposal,

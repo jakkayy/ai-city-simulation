@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.simulation.policy_engine import apply_policy_to_city, apply_citizen_reactions_to_policy
+from app.simulation.policy_effects import apply_policy_to_city, apply_citizen_reactions_to_policy
 from app.simulation.state import city_state
 from app.simulation.constants import SERVICE_CUT_SAVING_PER_POINT, SERVICE_POLICY_COST_PER_POINT, TAX_CAP
 from app.models.citizen import Personality, Zone, JobType

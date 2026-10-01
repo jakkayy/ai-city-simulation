@@ -4,7 +4,7 @@
 
 ## โปรเจคนี้เอาไว้ทำอะไร
 
-1. **เรียนรู้และโชว์ฝีมือ (portfolio)** ครอบคลุม LLM agent, ระบบ real-time (socket.io), async backend, ฐานข้อมูล, Docker, CI/CD และเทสต์ 168 ตัว จุดที่น่าสนใจคือ LLM gateway ที่สลับหลาย key และจัดการโควตา, ระบบ fallback เมื่อ LLM ใช้ไม่ได้ และ agent ระดับเมือง
+1. **เรียนรู้และโชว์ฝีมือ (portfolio)** ครอบคลุม LLM agent, ระบบ real-time (socket.io), async backend, ฐานข้อมูล, Docker, CI และเทสต์กว่า 240 ตัว จุดที่น่าสนใจคือ LLM gateway ที่สลับหลาย key และจัดการโควตา, ระบบ fallback เมื่อ LLM ใช้ไม่ได้ และ agent ระดับเมือง
 2. **สนามทดลอง multi-agent AI** ดูว่า AI 50 ตัวที่ตอบสนองต่อเหตุการณ์เดียวกันให้พฤติกรรมรวมออกมาอย่างไร ทดลอง prompt, ต้นทุน/โควตา LLM และการเลือกระหว่าง "ให้ AI คิด" กับ "ใช้กฎธรรมดา"
 3. **เกมหรือของเล่นเชิงการศึกษาแบบเบาๆ** ให้เห็นภาพ trade-off ของนโยบาย เช่น ลดภาษีแล้วงบหาย ขึ้นภาษีแล้วประชากรไม่พอใจ
 
@@ -20,11 +20,12 @@
 - **ระบบวิกฤต** แจ้งเตือน warning / critical / collapse ตามความสุขเฉลี่ย
 - **Replay** เล่นย้อนจากวันที่บันทึกไว้ โดยไม่เรียก LLM และไม่แก้ข้อมูลจริง
 - **เศรษฐกิจที่ไม่นิ่ง** ความสุขของแต่ละคนขึ้นกับภาษี บริการ เงินเก็บ โซนที่อยู่ และการมีงาน มีเหตุการณ์สุ่ม (ถดถอย/เฟื่องฟู/ภัยพิบัติ/เงินสนับสนุน) คนตกงานหรือล้มละลายได้ และบริการยิ่งดียิ่งมีค่าใช้จ่าย
-- **ควบคุมเมือง** ปรับความเร็ว (10 วินาที–2 นาทีต่อวัน) และเริ่มเมืองใหม่ได้จากหน้าเว็บ
+- **ควบคุมเมือง** ปรับความเร็วด้วยแถบเลื่อน (10 วินาที–10 นาทีต่อวัน) และเริ่มเมืองใหม่ได้จากหน้าเว็บ
 - **ใช้งานง่าย** UI เป็นภาษาไทย (สลับ EN ได้) มีคู่มือกดเปิดดูได้จากปุ่ม “คู่มือ” (เด้งขึ้นเองครั้งแรก) มีสรุปสถานะเมืองเป็นประโยค คำอธิบายตัวเลข และนโยบายแนะนำแบบกดเลือก
 - **รูปโปรไฟล์ประชากร** สร้างจากโค้ด (SVG) หน้าตาไม่ซ้ำและคงที่ตาม ID สีหน้าเปลี่ยนตามความสุข (ยิ้ม/เฉย/หน้าบึ้ง) และมีเครื่องประกอบตามอาชีพ เช่น หมวกแรงงาน แว่นครู เนคไทเจ้าของธุรกิจ ไม่พึ่งบริการภายนอก
 - **แผนที่ที่ซูมและเต็มจอได้** ซูม (ปุ่ม / Ctrl + ล้อเมาส์ / ดับเบิลคลิก / pinch) ลากเลื่อน โฟกัสกลางเมือง และเต็มจอ รอบเมืองมีแม่น้ำ สะพาน ท่าเรือ โรงเรียน โรงพยาบาล โรงงาน และฟาร์ม ป้ายตัวเลขแสดงจำนวนคนที่ทำงานที่นั่นตามอาชีพจริง
 - **เมืองที่มีชีวิต** เวลาในเมืองเดินตามวัน (1 วัน = 1 tick) มีกลางวัน กลางคืน รุ่งเช้าและพลบค่ำ ไฟถนนและหน้าต่างเปิดตอนค่ำ เช้าประชากรเดินทางไปทำงานตามอาชีพจริง (ครู→โรงเรียน แรงงาน→โรงงาน เกษตรกร→ฟาร์ม พนักงานบริการ→ตลาด เจ้าของธุรกิจ/ผู้เชี่ยวชาญ→ใจกลางเมือง คนว่างงาน→สวนสาธารณะ) เย็นกลับบ้าน ขณะที่ไปทำงานจุดบ้านจะจางลง
+- **รายงานสิ้นวัน** ทุกวันที่จบ เมืองสรุปตัวเลขและเหตุการณ์ของวันนั้นเก็บในฐานข้อมูล ดูย้อนหลังได้ที่แท็บ “รายงานรายวัน” วันสำคัญ (วิกฤต เหตุการณ์ของเมือง ความสุขเปลี่ยนมาก ล้มละลายหลายคน) จะเด้งสรุปให้ และถ้าตั้ง Groq key จะมีข้อความเล่าเรื่องจาก AI เพิ่ม (ไทย+อังกฤษ ใช้โควตา 1 ครั้งต่อวัน ทำงานเบื้องหลังไม่หน่วงเมือง)
 - **แดชบอร์ดเรียลไทม์** กราฟแนวโน้ม แผนที่เมืองที่ประชากรเคลื่อนที่ข้ามโซนแบบ smooth ฟีดเหตุการณ์ และตัวกรองรายชื่อประชากร
 
 > Replay ทำงานบนสำเนาในหน่วยความจำ ไม่แตะข้อมูลจริง ผลเหมือนเดิมทุกครั้ง (seed ตามวัน) ย้อนดูได้เฉพาะวันที่บันทึกหลังอัปเดตที่เก็บสถานะประชากรไว้ใน snapshot
@@ -41,22 +42,51 @@ Next.js (frontend) ──── nginx ──── FastAPI + socket.io (backend)
 - **Backend:** FastAPI, SQLAlchemy (async), Alembic, APScheduler, python-socketio
 - **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS 4
 - **LLM:** Groq (llama-3.1-8b-instant สำหรับประชากร, llama-3.3-70b-versatile สำหรับ City Manager / Advisor) โควตา 90 RPM / 3000 RPD ต่อ key
-- **1 tick = 1 วันในเกม** ทุก 1 นาทีเป็นค่าเริ่มต้น (ปรับได้ 10 วินาที–2 นาทีจากหน้าเว็บ) ลำดับ: เศรษฐกิจ → ตลาดงาน → ย้ายโซน → ความสุข → เหตุการณ์สุ่ม → บันทึก snapshot → LLM ตอบสนอง
+- **1 tick = 1 วันในเกม** ทุก 1 นาทีเป็นค่าเริ่มต้น (เลื่อนปรับได้ 10 วินาที–10 นาทีจากหน้าเว็บ) ลำดับ: เศรษฐกิจ → ตลาดงาน → ย้ายโซน → ความสุข → เหตุการณ์สุ่ม → บันทึก snapshot → LLM ตอบสนอง
 
 ## โครงสร้างโปรเจค
 
 ```
-backend/
-  app/api/          REST endpoints (simulation, policies, citizens, agents, gateway)
-  app/simulation/   ตัวเกมหลัก: loop, economy, zones, policy_engine, citizen_ai, agents, gateway
-  app/models/       SQLAlchemy models
-  alembic/          database migrations
-  tests/            pytest (168 เทสต์ รวมการจำลองเมืองระยะยาว 600 วัน)
+backend/app/
+  main.py               FastAPI + socket.io, scheduler, startup (lifespan)
+  api/                  REST endpoints
+    simulation.py         start / stop / step / speed / status
+    history.py            snapshots, replay, reset city
+    policies.py  citizens.py  agents.py  gateway_status.py  reports.py
+  simulation/           ตัวเกม (ไม่ผูกกับ HTTP)
+    loop.py               1 tick = 1 วัน: เรียงลำดับขั้นตอนทั้งหมด + broadcast
+    economy.py  happiness.py  zones.py  city_events.py   กติกาของเมือง
+    policy_engine.py      ตรวจพารามิเตอร์นโยบาย + ทำนายผล
+    policy_effects.py     ผลของนโยบายต่อเมืองและประชากร
+    snapshots.py          บันทึก/กู้สถานะเมือง (ใช้ใน replay)
+    crisis.py             ระดับวิกฤต + cooldown ของ Policy Advisor
+    reports.py            รายงานสิ้นวัน + ข้อความเล่าเรื่องจาก LLM
+    citizen_ai.py  fallback.py  gateway.py   LLM (ประชากร, กฎสำรอง, สลับ key/โควตา)
+    agents/               City Manager, Policy Advisor, สถานะ, ตัวแปลง JSON
+    state.py  constants.py  ค่าและสถานะส่วนกลาง
+  models/  schemas/  db/  SQLAlchemy models, schemas, seed
+backend/tests/          pytest (191 เทสต์ รวมการจำลองเมืองระยะยาว)
+
 frontend/app/
-  components/       Dashboard, CityMap, StatCards, EventFeed, ...
-  lib/              useSimulation (state + socket), api, types, i18n (+ vitest)
-scripts/            backup.sh / restore.sh (สำรองและกู้ฐานข้อมูล)
+  components/
+    Dashboard.tsx         ประกอบหน้า
+    header/               ส่วนหัว: ปุ่มควบคุม ความเร็ว สถานะ ภาษา
+    stats/                การ์ดสถิติ โซน สรุปสถานะเมือง
+    map/                  แผนที่: CityMap (ประกอบ) + Ground/Roads/ZonePanel/World/Districts/NightLayer ...
+    citizens/             รายชื่อประชากร การ์ด รูปโปรไฟล์
+    feed/                 แผงฟีด (เหตุการณ์สด + รายงานรายวัน) ป๊อปอัปสรุปวัน ประวัตินโยบาย
+    panels/               ออกนโยบาย ย้อนดู สถานะ AI คู่มือ
+    ui/                   ส่วนประกอบกลาง: Select, Hint, Toasts, AnimatedNumber, Sparkline
+  lib/
+    useSimulation.ts      state + socket + REST ของทั้งหน้า
+    api.ts  types.ts  socket.ts  mood.ts  avatar.ts  events.ts  actions.ts  policies.ts
+    i18n/                 th.ts, en.ts (ต้องมีคีย์ตรงกัน มีเทสต์ตรวจ) + hook
+    map/                  เรขาคณิตของแผนที่ (mapLayout, coreLayout), ซูม/เลื่อน, เวลา, การเดินทางไปทำงาน
+  lib/**/__tests__/     vitest (89 เทสต์)
+scripts/                backup.sh / restore.sh / deploy.sh
 ```
+
+กติกาเวลาเพิ่มของ: ค่าเกมแก้ที่ `constants.py` (ฝั่ง backend) ข้อความทุกภาษาแก้ที่ `lib/i18n/th.ts` และ `en.ts` พร้อมกัน ข้อมูลเรขาคณิตของแผนที่อยู่ใน `lib/map/` ไม่ปนในคอมโพเนนต์
 
 ## เริ่มพัฒนาบนเครื่อง
 
@@ -132,24 +162,17 @@ nginx เสิร์ฟ frontend ที่พอร์ต 80 และ proxy `/
 
 > ถ้ามี deployment เดิมอยู่แล้ว ให้ใส่ `COMPOSE_PROJECT_NAME=<ชื่อโปรเจคเดิม>` ใน `~/ai-city.env` (ดูชื่อจาก `docker compose ls`) ไม่เช่นนั้น Docker จะสร้างฐานข้อมูลใหม่และข้อมูลเมืองเดิมจะไม่ถูกใช้
 
-### Auto deploy ด้วย self-hosted runner
+### อัปเดตเวอร์ชันที่ deploy อยู่
 
-เมื่อ push เข้า `main` และ CI ผ่าน, workflow CD (`.github/workflows/cd.yml`) จะสั่งให้คอมที่บ้าน build และรันใหม่เอง โดยไม่ต้องเปิดพอร์ตเข้าบ้าน (runner ดึงงานออกไปหา GitHub)
+```bash
+scripts/deploy.sh      # git pull + build ใหม่ + รอ health check
+```
 
-ตั้งค่าครั้งเดียวบนคอมที่บ้าน (Linux):
+สคริปต์เตือนถ้าใน `~/ai-city.env` ไม่มี `GROQ_API_KEY_*` (ประชากรจะใช้กฎสำรองแทน LLM)
 
-1. ติดตั้ง Docker และให้ผู้ใช้รัน docker ได้โดยไม่ต้อง sudo: `sudo usermod -aG docker $USER` แล้วล็อกอินใหม่
-2. ไปที่ GitHub repo → Settings → Actions → Runners → **New self-hosted runner** เลือก Linux แล้วรันคำสั่งที่หน้านั้นให้ทีละบรรทัด
-3. ติดตั้งให้รันเป็นบริการ จะได้เปิดเครื่องแล้วทำงานเองหลังรีบูต:
-   ```bash
-   cd ~/actions-runner
-   sudo ./svc.sh install && sudo ./svc.sh start
-   ```
-4. สร้างไฟล์ env ไว้ที่ `~/ai-city.env` (ตามด้านบน) ถ้าไว้ที่อื่น ให้ตั้ง repository variable ชื่อ `ENV_FILE` เป็นพาธนั้น (Settings → Secrets and variables → Actions → Variables)
+> `docker compose` อ่านเฉพาะไฟล์ `.env` เองโดยอัตโนมัติ ไฟล์ความลับของโปรเจคนี้ (`~/ai-city.env`) ต้องส่งผ่าน `--env-file` เสมอ ถ้าลืม key จะว่างเปล่าแล้ว LLM จะไม่ถูกเรียกโดยไม่มี error ใดๆ ตรวจได้ด้วย `curl http://localhost/api/gateway/status` ต้องเห็น `keys` ไม่ว่าง และ `total_calls` เพิ่มขึ้นเมื่อเมืองเดิน
 
-Deploy ด้วยมือผ่าน GitHub ได้จากแท็บ Actions → CD → Run workflow
-
-> ความปลอดภัย: self-hosted runner รันโค้ดจาก workflow บนเครื่องคุณ ใช้กับ repo ส่วนตัวเท่านั้น อย่าเปิดให้ pull request จาก fork ภายนอกรัน workflow บนเครื่องนี้
+ไม่มี CD อัตโนมัติ repo นี้เป็น public การให้ GitHub สั่งรันโค้ดบนเครื่องที่บ้าน (self-hosted runner) จึงเสี่ยงโดยไม่จำเป็น อัปเดตด้วยมือผ่านสคริปต์ด้านบนเมื่อต้องการ
 
 ### สำรองและกู้ข้อมูล
 
@@ -176,7 +199,7 @@ source venv/bin/activate
 pytest tests/ -v
 ```
 
-168 เทสต์ ครอบคลุม economy, zones, gateway, citizen AI, policy engine, agents, replay และการจำลองเมืองระยะยาว (ตรวจว่าเศรษฐกิจไม่พังเป็นสภาพนิ่งตายตัว)
+191 เทสต์ ครอบคลุม economy, zones, gateway, citizen AI, policy engine, agents, replay, รายงานสิ้นวัน และการจำลองเมืองระยะยาว (ตรวจว่าเศรษฐกิจไม่พังเป็นสภาพนิ่งตายตัว)
 
 ฝั่ง frontend:
 
@@ -185,7 +208,6 @@ cd frontend
 npx tsc --noEmit && npm run lint && npm test
 ```
 
-## CI/CD
+## CI
 
-- **CI** (`.github/workflows/ci.yml`) รันเมื่อ push เข้า `develop`/`main` และ PR เข้า `main` ทำ pytest ฝั่ง backend และ type-check ฝั่ง frontend
-- **CD** (`.github/workflows/cd.yml`) รันบน self-hosted runner หลัง CI ผ่านบน `main` (ดูวิธีตั้งค่าด้านบน) ไม่ต้องใช้ GitHub Secrets
+`.github/workflows/ci.yml` รันเมื่อ push เข้า `develop`/`main` และ PR เข้า `main` ทำ pytest ฝั่ง backend และ type-check + lint + เทสต์ฝั่ง frontend

@@ -6,16 +6,17 @@ import { useI18n } from "../lib/i18n"
 import { useSimulation } from "../lib/useSimulation"
 import type { CityManagerProposal, PolicyType } from "../lib/types"
 import Alerts from "./Alerts"
-import CitizenGrid from "./CitizenGrid"
-import CityMap from "./CityMap"
-import EventFeed from "./EventFeed"
-import CitySummary from "./CitySummary"
-import Guide, { hasSeenGuide } from "./Guide"
-import Header from "./Header"
-import PolicyHistory from "./PolicyHistory"
-import StatCards from "./StatCards"
-import Toasts from "./Toasts"
-import ZoneStrip from "./ZoneStrip"
+import CitizenGrid from "./citizens/CitizenGrid"
+import CityMap from "./map/CityMap"
+import FeedPanel from "./feed/FeedPanel"
+import ReportPopup from "./feed/ReportPopup"
+import CitySummary from "./stats/CitySummary"
+import Guide, { hasSeenGuide } from "./panels/Guide"
+import Header from "./header/Header"
+import PolicyHistory from "./feed/PolicyHistory"
+import StatCards from "./stats/StatCards"
+import Toasts from "./ui/Toasts"
+import ZoneStrip from "./stats/ZoneStrip"
 
 export default function Dashboard() {
   const sim = useSimulation()
@@ -125,12 +126,13 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-col gap-4 xl:sticky xl:top-4 xl:self-start">
-            <EventFeed events={sim.events} />
+            <FeedPanel events={sim.events} reports={sim.reports} />
             <PolicyHistory version={policyVersion} />
           </div>
         </div>
       </div>
 
+      <ReportPopup report={sim.popupReport} onClose={sim.closeReportPopup} />
       <Toasts toasts={sim.toasts} />
       <Guide open={guideOpen} onClose={() => setGuideOpen(false)} />
     </main>
