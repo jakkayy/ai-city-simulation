@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { fetchPolicies } from "../lib/api"
-import { useI18n } from "../lib/i18n"
-import type { PolicyResponse } from "../lib/types"
+import { fetchPolicies } from "../../lib/api"
+import { useI18n } from "../../lib/i18n"
+import type { PolicyResponse } from "../../lib/types"
 
 interface Props {
   // changes whenever a policy may have been enacted, to trigger a reload

@@ -1,11 +1,11 @@
 "use client"
 
-import { useI18n } from "../lib/i18n"
-import AnimatedNumber from "./AnimatedNumber"
-import Hint from "./Hint"
-import Sparkline from "./Sparkline"
-import type { HistoryPoint } from "../lib/types"
-import { moodColor } from "../lib/mood"
+import { useI18n } from "../../lib/i18n"
+import AnimatedNumber from "../ui/AnimatedNumber"
+import Hint from "../ui/Hint"
+import Sparkline from "../ui/Sparkline"
+import type { HistoryPoint } from "../../lib/types"
+import { moodColor } from "../../lib/mood"
 
 interface Props {
   happiness: number

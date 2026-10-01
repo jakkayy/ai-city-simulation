@@ -1,11 +1,11 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useI18n } from "../lib/i18n"
+import { useI18n } from "../../lib/i18n"
 import CitizenCard from "./CitizenCard"
-import Select from "./Select"
-import type { Citizen } from "../lib/types"
-import { ZONE_KEYS, ZONE_META } from "../lib/mood"
+import Select from "../ui/Select"
+import type { Citizen } from "../../lib/types"
+import { ZONE_KEYS, ZONE_META } from "../../lib/mood"
 
 type SortKey = "happiness_asc" | "happiness_desc" | "savings_desc" | "name"
 

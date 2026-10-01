@@ -1,7 +1,7 @@
 "use client"
 
-import { LAMPS } from "../lib/mapLayout"
-import { WORLD } from "../lib/mapLayout"
+import { LAMPS } from "../../lib/map/mapLayout"
+import { WORLD } from "../../lib/map/mapLayout"
 
 interface Props {
   windows: { x: number; y: number; w: number; h: number }[]

@@ -1,10 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { enactPolicy } from "../lib/api"
-import { useI18n } from "../lib/i18n"
-import Select from "./Select"
-import type { PolicyType } from "../lib/types"
+import { enactPolicy } from "../../lib/api"
+import { useI18n } from "../../lib/i18n"
+import Select from "../ui/Select"
+import type { PolicyType } from "../../lib/types"
 
 interface Field { key: string; min: number; max: number; step: number; defaultValue: number }
 

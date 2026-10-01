@@ -1,6 +1,6 @@
 "use client"
 
-import type { Toast } from "../lib/useSimulation"
+import type { Toast } from "../../lib/useSimulation"
 
 export default function Toasts({ toasts }: { toasts: Toast[] }) {
   return (

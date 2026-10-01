@@ -1,17 +1,17 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useI18n } from "../lib/i18n"
-import Avatar from "./Avatar"
+import { useI18n } from "../../lib/i18n"
+import Avatar from "../citizens/Avatar"
 import { CORE_OFFSET, Districts, World, WORLD, type WorkCounts } from "./Districts"
 import NightLayer from "./NightLayer"
-import { useMapView } from "../lib/useMapView"
-import { useMapLife } from "../lib/useMapLife"
-import { hashString } from "../lib/avatar"
-import { viewAround } from "../lib/mapView"
-import { DISTRICT_WINDOWS, PARK_BOX, SERVICES_BOX } from "../lib/mapLayout"
-import type { Citizen } from "../lib/types"
-import { moodColor, MOOD, ZONE_KEYS, ZONE_META, type ZoneKey } from "../lib/mood"
+import { useMapView } from "../../lib/map/useMapView"
+import { useMapLife } from "../../lib/map/useMapLife"
+import { hashString } from "../../lib/avatar"
+import { viewAround } from "../../lib/map/mapView"
+import { DISTRICT_WINDOWS, PARK_BOX, SERVICES_BOX } from "../../lib/map/mapLayout"
+import type { Citizen } from "../../lib/types"
+import { moodColor, MOOD, ZONE_KEYS, ZONE_META, type ZoneKey } from "../../lib/mood"
 
 // the city core is drawn in its own 760 x 500 space and placed inside the larger world
 const CW = 760

@@ -1,10 +1,10 @@
 "use client"
 
-import { actionLabel } from "../lib/actions"
-import { DICTS, useI18n } from "../lib/i18n"
+import { actionLabel } from "../../lib/actions"
+import { DICTS, useI18n } from "../../lib/i18n"
 import Avatar from "./Avatar"
-import type { Citizen } from "../lib/types"
-import { moodColor, prettyAction, ZONE_META } from "../lib/mood"
+import type { Citizen } from "../../lib/types"
+import { moodColor, prettyAction, ZONE_META } from "../../lib/mood"
 
 interface Props {
   citizen: Citizen

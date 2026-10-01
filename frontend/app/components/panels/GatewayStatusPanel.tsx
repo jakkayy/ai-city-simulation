@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { fetchGatewayStatus } from "../lib/api"
-import { useI18n } from "../lib/i18n"
-import type { GatewayStatus } from "../lib/types"
+import { fetchGatewayStatus } from "../../lib/api"
+import { useI18n } from "../../lib/i18n"
+import type { GatewayStatus } from "../../lib/types"
 
 export default function GatewayStatusPanel() {
   const { t } = useI18n()

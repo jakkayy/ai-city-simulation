@@ -1,9 +1,9 @@
 "use client"
 
-import { useI18n } from "../lib/i18n"
-import { hashString, seededRandom } from "../lib/avatar"
+import { useI18n } from "../../lib/i18n"
+import { hashString, seededRandom } from "../../lib/avatar"
 
-import { BADGE_MAX_W, CORE_OFFSET, LEFT_X, PLOT_W, RIGHT_X, SLOTS, WORLD } from "../lib/mapLayout"
+import { BADGE_MAX_W, CORE_OFFSET, LEFT_X, PLOT_W, RIGHT_X, SLOTS, WORLD } from "../../lib/map/mapLayout"
 
 export { CORE_OFFSET, WORLD }
 

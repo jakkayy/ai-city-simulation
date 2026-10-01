@@ -2,7 +2,7 @@
 // follows the roads to work, and comes back in the evening. Everything is derived from the
 // citizen's id, zone, job and home position, so it is stable between frames and reloads.
 
-import { hashString, seededRandom } from "./avatar"
+import { hashString, seededRandom } from "../avatar"
 import {
   CENTRE_X,
   CORE,

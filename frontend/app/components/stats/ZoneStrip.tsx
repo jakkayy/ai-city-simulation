@@ -1,10 +1,10 @@
 "use client"
 
-import { useI18n } from "../lib/i18n"
-import AnimatedNumber from "./AnimatedNumber"
-import Hint from "./Hint"
-import type { Citizen } from "../lib/types"
-import { moodColor, ZONE_KEYS, ZONE_META } from "../lib/mood"
+import { useI18n } from "../../lib/i18n"
+import AnimatedNumber from "../ui/AnimatedNumber"
+import Hint from "../ui/Hint"
+import type { Citizen } from "../../lib/types"
+import { moodColor, ZONE_KEYS, ZONE_META } from "../../lib/mood"
 
 interface Props {
   citizens: Citizen[]

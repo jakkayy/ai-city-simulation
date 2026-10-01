@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useI18n } from "../lib/i18n"
-import Select from "./Select"
-import { fetchSnapshots, startReplay, stopReplay } from "../lib/api"
-import type { DailySnapshot } from "../lib/types"
+import { useI18n } from "../../lib/i18n"
+import Select from "../ui/Select"
+import { fetchSnapshots, startReplay, stopReplay } from "../../lib/api"
+import type { DailySnapshot } from "../../lib/types"
 
 interface Props {
   isRunning: boolean

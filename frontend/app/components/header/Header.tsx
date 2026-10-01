@@ -1,12 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useI18n } from "../lib/i18n"
-import AnimatedNumber from "./AnimatedNumber"
+import { useI18n } from "../../lib/i18n"
+import AnimatedNumber from "../ui/AnimatedNumber"
 import LangToggle from "./LangToggle"
-import GatewayStatusPanel from "./GatewayStatusPanel"
-import PolicyPanel from "./PolicyPanel"
-import ReplayPanel from "./ReplayPanel"
+import GatewayStatusPanel from "../panels/GatewayStatusPanel"
+import PolicyPanel from "../panels/PolicyPanel"
+import ReplayPanel from "../panels/ReplayPanel"
 
 interface Props {
   day: number

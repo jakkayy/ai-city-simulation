@@ -1,7 +1,7 @@
 "use client"
 
 import { useId } from "react"
-import { avatarTraits, expressionFor } from "../lib/avatar"
+import { avatarTraits, expressionFor } from "../../lib/avatar"
 
 interface Props {
   seed: string

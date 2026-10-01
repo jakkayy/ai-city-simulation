@@ -1,8 +1,8 @@
 "use client"
 
-import { eventText } from "../lib/events"
-import { useI18n } from "../lib/i18n"
-import type { EventItem } from "../lib/types"
+import { eventText } from "../../lib/events"
+import { useI18n } from "../../lib/i18n"
+import type { EventItem } from "../../lib/types"
 
 const KIND: Record<string, { icon: string; label: string }> = {
   migration: { icon: "M4 12h13m0 0l-5-5m5 5l-5 5", label: "feed.move" },

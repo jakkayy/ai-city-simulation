@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useI18n } from "../lib/i18n"
+import { useI18n } from "../../lib/i18n"
 
 const SEEN_KEY = "aicity.guideSeen"
 type Tab = "start" | "numbers" | "policy" | "map" | "faq"
