@@ -14,6 +14,7 @@ from app.simulation.city_events import maybe_city_event
 from app.simulation.crisis import advisor_due, check_crisis, reset_advisor_cooldown
 from app.simulation.economy import apply_economy_tick, apply_job_market
 from app.simulation.happiness import apply_happiness_tick
+from app.simulation.reports import build_report, load_report_context, spawn_narrative
 from app.simulation.snapshots import apply_citizen_state, build_snapshot_data, citizen_state
 from app.simulation.state import CityState, city_state
 from app.simulation.zones import apply_migration_tick, get_zone_populations
@@ -123,6 +124,8 @@ async def _do_tick(db: AsyncSession) -> None:
     pops = get_zone_populations(citizens)
     avg_happiness = sum(c.happiness for c in citizens) / len(citizens)
     day_recorded = city_state.simulation_day
+    crisis = check_crisis(avg_happiness)
+    report = None   # replays are not recorded, so they have no report
 
     if replay:
         # replay never touches the database: remember the state in memory, discard ORM changes
@@ -141,7 +144,19 @@ async def _do_tick(db: AsyncSession) -> None:
                 happiness_delta=ev.get("happiness_delta", 0.0),
             ))
 
-        # step 7 — save daily snapshot (including full citizen state, for replay)
+        # step 7 — end-of-day report, saved with the daily snapshot (including full citizen state, for replay)
+        prev, enacted = await load_report_context(db, day_recorded)
+        report = build_report(
+            day=day_recorded,
+            avg_happiness=avg_happiness,
+            fund=city_state.city_fund,
+            service_quality=city_state.service_quality,
+            tax_rate=city_state.tax_rate,
+            prev=prev,
+            events=all_events,
+            crisis=crisis,
+            policies=enacted,
+        )
         db.add(DailySnapshot(
             simulation_day=day_recorded,
             avg_happiness=avg_happiness,
@@ -152,11 +167,15 @@ async def _do_tick(db: AsyncSession) -> None:
             zone_c_pop=pops[Zone.C],
             total_tax_collected=economy_result["total_tax_collected"],
             llm_calls_used=0,
-            snapshot_data=build_snapshot_data(citizens),
+            snapshot_data={**build_snapshot_data(citizens), "report": report},
         ))
 
         city_state.simulation_day += 1
         await db.commit()
+
+        # the LLM bulletin arrives later through the "report_narrative" event
+        if _gateway_module.llm_gateway._keys:
+            spawn_narrative(report, _gateway_module.llm_gateway, _emit)
 
         # step 8 — citizen reactions via LLM (rule-based fallback is used inside the gateway)
         if _gateway_module.llm_gateway._keys:
@@ -171,7 +190,6 @@ async def _do_tick(db: AsyncSession) -> None:
             await run_citizen_ai_tick(citizens, ctx, _gateway_module.llm_gateway)
 
     # step 9 — City Manager (every 7 days) and Policy Advisor (on crisis)
-    crisis = check_crisis(avg_happiness)
     agent_ctx = {
         "day": city_state.simulation_day,
         "avg_happiness": avg_happiness,
@@ -204,6 +222,7 @@ async def _do_tick(db: AsyncSession) -> None:
         "zone_populations": {z.value: n for z, n in pops.items()},
         "citizens": [_citizen_dict(c) for c in citizens],
         "events": all_events,
+        "report": report,
     })
 
     logger.info(
