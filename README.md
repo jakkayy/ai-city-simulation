@@ -1,50 +1,50 @@
 # AI City Simulation
 
-เมืองจำลองที่มีประชากร 50 คนเป็น AI agent ขับเคลื่อนด้วย LLM (Groq) แต่ละคนมีอาชีพ นิสัย เงินเก็บ และความสุขของตัวเอง คุณเล่นเป็นผู้บริหารเมือง ออกนโยบายแล้วดูว่าประชากรตอบสนองอย่างไร ย้ายโซนไหน และเมืองรุ่งหรือล่ม ทั้งหมดดูได้สดผ่านแดชบอร์ด
+A simulated city of 50 AI citizen agents driven by LLMs (Groq). Each citizen has a job, a personality, savings and a happiness level of their own. You play the mayor: enact policies, watch how the citizens react and where they move, and see whether the city thrives or collapses. Everything is visible live on a dashboard.
 
-## โปรเจคนี้เอาไว้ทำอะไร
+## What is this for?
 
-1. **เรียนรู้และโชว์ฝีมือ (portfolio)** ครอบคลุม LLM agent, ระบบ real-time (socket.io), async backend, ฐานข้อมูล, Docker, CI และเทสต์กว่า 240 ตัว จุดที่น่าสนใจคือ LLM gateway ที่สลับหลาย key และจัดการโควตา, ระบบ fallback เมื่อ LLM ใช้ไม่ได้ และ agent ระดับเมือง
-2. **สนามทดลอง multi-agent AI** ดูว่า AI 50 ตัวที่ตอบสนองต่อเหตุการณ์เดียวกันให้พฤติกรรมรวมออกมาอย่างไร ทดลอง prompt, ต้นทุน/โควตา LLM และการเลือกระหว่าง "ให้ AI คิด" กับ "ใช้กฎธรรมดา"
-3. **เกมหรือของเล่นเชิงการศึกษาแบบเบาๆ** ให้เห็นภาพ trade-off ของนโยบาย เช่น ลดภาษีแล้วงบหาย ขึ้นภาษีแล้วประชากรไม่พอใจ
+1. **Learning and showing off (portfolio).** It covers LLM agents, real-time systems (socket.io), an async backend, a database, Docker, CI and more than 240 tests. The interesting parts are the LLM gateway that rotates several API keys and manages their quotas, the rule-based fallback for when the LLM is unavailable, and the city-level agents.
+2. **A playground for multi-agent AI.** See what collective behaviour comes out of 50 AIs reacting to the same events. Experiment with prompts, LLM cost/quota, and the choice between "let the AI think" and "use plain rules".
+3. **A light game / educational toy.** Makes policy trade-offs visible: cut taxes and the fund drains, raise them and citizens get unhappy.
 
-**ข้อจำกัด:** เมืองเป็น singleton ตัวเดียวที่ทุกคนแชร์กัน และเศรษฐกิจเป็นแบบจำลองง่ายๆ ที่ผมปรับค่าด้วยการจำลองเอง (ไม่ได้อิงข้อมูลจริง) จึงเป็นของเล่นและตัวอย่างสถาปัตยกรรม ไม่ใช่เครื่องมือที่ให้ข้อสรุปทางเศรษฐศาสตร์ที่เชื่อถือได้ ระบบยังไม่มี authentication ใครเข้าถึงเครื่องได้ก็ควบคุมเมืองและใช้โควตา Groq ได้ จึงเหมาะกับการรันในเครื่องหรือเครือข่ายส่วนตัว
+**Limitations.** There is a single city that everyone shares. The economy is a simple model whose numbers I tuned by simulating it myself (not based on real data), so this is a toy and an architecture example, not a tool for drawing reliable economic conclusions. There is no authentication: anyone who can reach the machine can control the city and spend your Groq quota, so run it locally or on a private network.
 
-## สิ่งที่ทำได้
+## Features
 
-- **ประชากร 50 คน** มีอาชีพ นิสัย เงินเก็บ ความสุข และความจำของตัวเอง
-- **3 โซน** A (คนรวย, จุ 15), B (ชนชั้นกลาง, จุ 20), C (แรงงาน, จุ 30) ประชากรย้ายโซนตามฐานะและความสุข เต็มแล้วต้องเข้าคิว
-- **ออกนโยบาย** ขึ้น/ลดภาษี เพิ่ม/ลดบริการสาธารณะ โครงการที่อยู่อาศัย โครงการสร้างงาน
-- **City Manager** เสนอนโยบายทุก 7 วัน (ผ่าน LLM) กดใช้ได้ทันทีจากแดชบอร์ด
-- **Policy Advisor** ให้คำแนะนำเมื่อเข้าสู่วิกฤต (ความสุขเฉลี่ยต่ำ)
-- **ระบบวิกฤต** แจ้งเตือน warning / critical / collapse ตามความสุขเฉลี่ย
-- **Replay** เล่นย้อนจากวันที่บันทึกไว้ โดยไม่เรียก LLM และไม่แก้ข้อมูลจริง
-- **เศรษฐกิจที่ไม่นิ่ง** ความสุขของแต่ละคนขึ้นกับภาษี บริการ เงินเก็บ โซนที่อยู่ และการมีงาน มีเหตุการณ์สุ่ม (ถดถอย/เฟื่องฟู/ภัยพิบัติ/เงินสนับสนุน) คนตกงานหรือล้มละลายได้ และบริการยิ่งดียิ่งมีค่าใช้จ่าย
-- **ควบคุมเมือง** ปรับความเร็วด้วยแถบเลื่อน (10 วินาที–10 นาทีต่อวัน) และเริ่มเมืองใหม่ได้จากหน้าเว็บ
-- **ใช้งานง่าย** UI เป็นภาษาไทย (สลับ EN ได้) มีคู่มือกดเปิดดูได้จากปุ่ม “คู่มือ” (เด้งขึ้นเองครั้งแรก) มีสรุปสถานะเมืองเป็นประโยค คำอธิบายตัวเลข และนโยบายแนะนำแบบกดเลือก
-- **รูปโปรไฟล์ประชากร** สร้างจากโค้ด (SVG) หน้าตาไม่ซ้ำและคงที่ตาม ID สีหน้าเปลี่ยนตามความสุข (ยิ้ม/เฉย/หน้าบึ้ง) และมีเครื่องประกอบตามอาชีพ เช่น หมวกแรงงาน แว่นครู เนคไทเจ้าของธุรกิจ ไม่พึ่งบริการภายนอก
-- **แผนที่ที่ซูมและเต็มจอได้** ซูม (ปุ่ม / Ctrl + ล้อเมาส์ / ดับเบิลคลิก / pinch) ลากเลื่อน โฟกัสกลางเมือง และเต็มจอ รอบเมืองมีแม่น้ำ สะพาน ท่าเรือ โรงเรียน โรงพยาบาล โรงงาน และฟาร์ม ป้ายตัวเลขแสดงจำนวนคนที่ทำงานที่นั่นตามอาชีพจริง
-- **เมืองที่มีชีวิต** เวลาในเมืองเดินตามวัน (1 วัน = 1 tick) มีกลางวัน กลางคืน รุ่งเช้าและพลบค่ำ ไฟถนนและหน้าต่างเปิดตอนค่ำ เช้าประชากรเดินทางไปทำงานตามอาชีพจริง (ครู→โรงเรียน แรงงาน→โรงงาน เกษตรกร→ฟาร์ม พนักงานบริการ→ตลาด เจ้าของธุรกิจ/ผู้เชี่ยวชาญ→ใจกลางเมือง คนว่างงาน→สวนสาธารณะ) เย็นกลับบ้าน ขณะที่ไปทำงานจุดบ้านจะจางลง
-- **รายงานสิ้นวัน** ทุกวันที่จบ เมืองสรุปตัวเลขและเหตุการณ์ของวันนั้นเก็บในฐานข้อมูล ดูย้อนหลังได้ที่แท็บ “รายงานรายวัน” วันสำคัญ (วิกฤต เหตุการณ์ของเมือง ความสุขเปลี่ยนมาก ล้มละลายหลายคน) จะเด้งสรุปให้ และถ้าตั้ง Groq key จะมีข้อความเล่าเรื่องจาก AI เพิ่ม (ไทย+อังกฤษ ใช้โควตา 1 ครั้งต่อวัน ทำงานเบื้องหลังไม่หน่วงเมือง)
-- **แดชบอร์ดเรียลไทม์** กราฟแนวโน้ม แผนที่เมืองที่ประชากรเคลื่อนที่ข้ามโซนแบบ smooth ฟีดเหตุการณ์ และตัวกรองรายชื่อประชากร
+- **50 citizens**, each with a job, personality, savings, happiness and memory.
+- **3 zones:** A (wealthy, capacity 15), B (middle class, 20), C (working class, 30). Citizens move between zones according to wealth and happiness; when a zone is full they wait in a queue.
+- **Policies:** raise/lower taxes, boost/cut public services, a housing programme, a jobs programme.
+- **City Manager:** proposes a policy every 7 days (via the LLM); enact it with one click from the dashboard.
+- **Policy Advisor:** gives advice when the city falls into crisis (low average happiness).
+- **Crisis system:** warning / critical / collapse alerts based on average happiness.
+- **Replay:** play back from any saved day without calling the LLM and without touching the real data.
+- **A restless economy:** each citizen's happiness depends on taxes, services, savings, the zone they live in and whether they have a job. There are random events (recession / boom / disaster / grant), people can lose their jobs or go bankrupt, and better services cost more to run.
+- **City controls:** a slider sets the length of a city day (10 seconds to 10 minutes), and you can start a brand-new city from the page.
+- **Easy to use:** the UI is in Thai with an EN switch; a guide opens from the "Guide" button (and appears by itself on the first visit); a one-sentence summary of the city's state, explanations of the numbers, and one-click suggested policies.
+- **Citizen avatars:** generated in code (SVG), unique and stable per citizen ID. The face changes with happiness (smile / neutral / frown) and there are accessories by job (a hard hat for labourers, glasses for teachers, a tie for business owners). No external service involved.
+- **A map you can zoom and fullscreen:** zoom (buttons / Ctrl + wheel / double-click / pinch), pan, focus on the city centre, and fullscreen. Around the city there is a river, bridges, a harbour, a school, a hospital, a factory and a farm; the badges show how many citizens really work there.
+- **A living city:** city time follows the simulation day (1 day = 1 tick) with day, night, dawn and dusk; street lights and windows come on in the evening. In the morning citizens travel to work according to their real job (teachers → school, labourers → factory, farmers → farm, service workers → market, business owners/professionals → city centre, the unemployed → the park) and return in the evening; while they are out, their home dot fades.
+- **End-of-day report:** every finished day the city summarises that day's numbers and events and stores them in the database. Browse them in the "Daily Reports" tab; notable days (a crisis, a city event, a big swing in happiness, several bankruptcies) pop up a summary. If a Groq key is set, an AI-written bulletin is added (Thai + English, one quota request per day, generated in the background so it never slows the city).
+- **Real-time dashboard:** trend charts, a city map where citizens glide between zones, an event feed, and filters for the citizen list.
 
-> Replay ทำงานบนสำเนาในหน่วยความจำ ไม่แตะข้อมูลจริง ผลเหมือนเดิมทุกครั้ง (seed ตามวัน) ย้อนดูได้เฉพาะวันที่บันทึกหลังอัปเดตที่เก็บสถานะประชากรไว้ใน snapshot
+> Replay runs on an in-memory copy and never touches the real data. It plays out identically every time (seeded by the day). Only days saved after citizen state was added to the snapshots can be replayed.
 
-## สถาปัตยกรรม
+## Architecture
 
 ```
 Next.js (frontend) ──── nginx ──── FastAPI + socket.io (backend) ──── PostgreSQL
                                           │
                                    Groq LLM Gateway
-                                  (สูงสุด 3 key, round-robin)
+                                  (up to 3 keys, round-robin)
 ```
 
 - **Backend:** FastAPI, SQLAlchemy (async), Alembic, APScheduler, python-socketio
 - **Frontend:** Next.js 16, React 19, TypeScript, Tailwind CSS 4
-- **LLM:** Groq (llama-3.1-8b-instant สำหรับประชากร, llama-3.3-70b-versatile สำหรับ City Manager / Advisor) โควตา 90 RPM / 3000 RPD ต่อ key
-- **1 tick = 1 วันในเกม** ทุก 1 นาทีเป็นค่าเริ่มต้น (เลื่อนปรับได้ 10 วินาที–10 นาทีจากหน้าเว็บ) ลำดับ: เศรษฐกิจ → ตลาดงาน → ย้ายโซน → ความสุข → เหตุการณ์สุ่ม → บันทึก snapshot → LLM ตอบสนอง
+- **LLM:** Groq, `llama-3.3-70b-versatile` everywhere (citizens, City Manager, Advisor, the end-of-day bulletin). Quota: 90 RPM / 3000 RPD per key.
+- **1 tick = 1 city day**, one minute by default (adjustable from 10 seconds to 10 minutes with the slider on the page). Order of a tick: economy → job market → migration → happiness → random city events → save snapshot → LLM reactions.
 
-## โครงสร้างโปรเจค
+## Project structure
 
 ```
 backend/app/
@@ -53,50 +53,50 @@ backend/app/
     simulation.py         start / stop / step / speed / status
     history.py            snapshots, replay, reset city
     policies.py  citizens.py  agents.py  gateway_status.py  reports.py
-  simulation/           ตัวเกม (ไม่ผูกกับ HTTP)
-    loop.py               1 tick = 1 วัน: เรียงลำดับขั้นตอนทั้งหมด + broadcast
-    economy.py  happiness.py  zones.py  city_events.py   กติกาของเมือง
-    policy_engine.py      ตรวจพารามิเตอร์นโยบาย + ทำนายผล
-    policy_effects.py     ผลของนโยบายต่อเมืองและประชากร
-    snapshots.py          บันทึก/กู้สถานะเมือง (ใช้ใน replay)
-    crisis.py             ระดับวิกฤต + cooldown ของ Policy Advisor
-    reports.py            รายงานสิ้นวัน + ข้อความเล่าเรื่องจาก LLM
-    citizen_ai.py  fallback.py  gateway.py   LLM (ประชากร, กฎสำรอง, สลับ key/โควตา)
-    agents/               City Manager, Policy Advisor, สถานะ, ตัวแปลง JSON
-    state.py  constants.py  ค่าและสถานะส่วนกลาง
-  models/  schemas/  db/  SQLAlchemy models, schemas, seed
-backend/tests/          pytest (191 เทสต์ รวมการจำลองเมืองระยะยาว)
+  simulation/           the game itself (no HTTP in here)
+    loop.py               1 tick = 1 day: runs every step in order + broadcasts
+    economy.py  happiness.py  zones.py  city_events.py   the city's rules
+    policy_engine.py      validates policy parameters + predicts effects
+    policy_effects.py     what a policy does to the city and the citizens
+    snapshots.py          save / restore the city state (used by replay)
+    crisis.py             crisis levels + the Policy Advisor's cooldown
+    reports.py            end-of-day report + the LLM bulletin
+    citizen_ai.py  fallback.py  gateway.py   LLM (citizens, rule-based fallback, key/quota rotation)
+    agents/               City Manager, Policy Advisor, their state, JSON parsing
+    state.py  constants.py  shared values and state
+  models/  schemas/  db/  SQLAlchemy models, schemas, seed data
+backend/tests/          pytest (191 tests, including a 600-day long-run simulation)
 
 frontend/app/
   components/
-    Dashboard.tsx         ประกอบหน้า
-    header/               ส่วนหัว: ปุ่มควบคุม ความเร็ว สถานะ ภาษา
-    stats/                การ์ดสถิติ โซน สรุปสถานะเมือง
-    map/                  แผนที่: CityMap (ประกอบ) + Ground/Roads/ZonePanel/World/Districts/NightLayer ...
-    citizens/             รายชื่อประชากร การ์ด รูปโปรไฟล์
-    feed/                 แผงฟีด (เหตุการณ์สด + รายงานรายวัน) ป๊อปอัปสรุปวัน ประวัตินโยบาย
-    panels/               ออกนโยบาย ย้อนดู สถานะ AI คู่มือ
-    ui/                   ส่วนประกอบกลาง: Select, Hint, Toasts, AnimatedNumber, Sparkline
+    Dashboard.tsx         assembles the page
+    header/               header: controls, speed slider, status, language
+    stats/                stat cards, zones, city summary
+    map/                  the map: CityMap (assembly) + Ground/Roads/ZonePanel/World/Districts/NightLayer ...
+    citizens/             citizen list, cards, avatars
+    feed/                 feed panel (live events + daily reports), day-summary popup, policy history
+    panels/               enact policy, replay, AI status, guide
+    ui/                   shared pieces: Select, Hint, Toasts, AnimatedNumber, Sparkline
   lib/
-    useSimulation.ts      state + socket + REST ของทั้งหน้า
+    useSimulation.ts      state + socket + REST for the whole page
     api.ts  types.ts  socket.ts  mood.ts  avatar.ts  events.ts  actions.ts  policies.ts
-    i18n/                 th.ts, en.ts (ต้องมีคีย์ตรงกัน มีเทสต์ตรวจ) + hook
-    map/                  เรขาคณิตของแผนที่ (mapLayout, coreLayout), ซูม/เลื่อน, เวลา, การเดินทางไปทำงาน
-  lib/**/__tests__/     vitest (89 เทสต์)
+    i18n/                 th.ts, en.ts (keys must match; a test enforces it) + the hook
+    map/                  map geometry (mapLayout, coreLayout), zoom/pan, time of day, commuting
+  lib/**/__tests__/     vitest (89 tests)
 scripts/                backup.sh / restore.sh / deploy.sh
 ```
 
-กติกาเวลาเพิ่มของ: ค่าเกมแก้ที่ `constants.py` (ฝั่ง backend) ข้อความทุกภาษาแก้ที่ `lib/i18n/th.ts` และ `en.ts` พร้อมกัน ข้อมูลเรขาคณิตของแผนที่อยู่ใน `lib/map/` ไม่ปนในคอมโพเนนต์
+Where things go: game values live in `constants.py` (backend). Every UI string goes in both `lib/i18n/th.ts` and `en.ts`. Map geometry lives in `lib/map/`, not inside components.
 
-## เริ่มพัฒนาบนเครื่อง
+## Local development
 
-### ต้องมี
+### Requirements
 
 - Python 3.12+
 - Node.js 20+
-- Docker (สำหรับ PostgreSQL)
+- Docker (for PostgreSQL)
 
-### 1. เปิดฐานข้อมูล
+### 1. Start the database
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d
@@ -109,8 +109,8 @@ cd backend
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-# สร้างไฟล์ backend/.env แล้วใส่ Groq API key
-# (backend อ่าน .env จากโฟลเดอร์ที่รัน uvicorn)
+# create backend/.env and put your Groq API keys in it
+# (the backend reads .env from the folder you run uvicorn in)
 cat > .env <<'EOF'
 GROQ_API_KEY_1=gsk_...
 GROQ_API_KEY_2=
@@ -121,9 +121,9 @@ alembic upgrade head
 uvicorn app.main:socket_app --reload
 ```
 
-- ไม่ใส่ Groq key ก็รันได้ ประชากรจะใช้กฎสำรองแทน LLM
-- ครั้งแรกที่รัน ถ้าฐานข้อมูลว่าง ระบบสร้างประชากร 50 คนให้อัตโนมัติ
-- ตารางในฐานข้อมูลถูกสร้างอัตโนมัติตอน startup (`create_all`) ส่วน migration ของ Alembic ตอนนี้ว่างเปล่า คำสั่ง `alembic upgrade head` จึงยังไม่ได้ทำอะไร และถ้าอนาคตเพิ่มคอลัมน์ในตารางที่มีอยู่แล้ว `create_all` จะไม่แก้ตารางเดิมให้ ต้องเขียน migration เอง
+- It runs without a Groq key; citizens then use the rule-based fallback instead of the LLM.
+- On the first run, if the database is empty, 50 citizens are created automatically.
+- Tables are created automatically at startup (`create_all`). The Alembic migration is currently empty, so `alembic upgrade head` does nothing yet, and if you later add a column to an existing table, `create_all` will not alter the old table: you have to write a migration yourself.
 
 ### 3. Frontend
 
@@ -133,65 +133,65 @@ npm install
 npm run dev
 ```
 
-เปิด [http://localhost:3000](http://localhost:3000) แล้วกด **Start** (หรือ **Step** เพื่อเดินทีละวัน)
+Open [http://localhost:3000](http://localhost:3000) and press **Start** (or **Step** to advance one day at a time).
 
-## ตัวแปรสภาพแวดล้อม
+## Environment variables
 
-| ตัวแปร | คำอธิบาย |
+| Variable | Description |
 |---|---|
 | `DATABASE_URL` | PostgreSQL async URL |
-| `GROQ_API_KEY_1/2/3` | Groq API key (ใส่ได้ถึง 3 ตัว สลับกันใช้) |
-| `CORS_ORIGINS` | origin ที่อนุญาต คั่นด้วยจุลภาค (ค่าเริ่มต้น `http://localhost:3000`) |
-| `ENV` | `development` หรือ `production` |
-| `NEXT_PUBLIC_API_URL` | URL ของ backend ที่ฝังตอน build frontend (ว่าง = same origin ผ่าน nginx) |
+| `GROQ_API_KEY_1/2/3` | Groq API keys (up to 3, used in rotation) |
+| `CORS_ORIGINS` | Allowed origins, comma-separated (default `http://localhost:3000`) |
+| `ENV` | `development` or `production` |
+| `NEXT_PUBLIC_API_URL` | Backend URL baked in when the frontend is built (empty = same origin through nginx) |
 
-ดูแม่แบบเต็มที่ `.env.production.example`
+See `.env.production.example` for the full template.
 
-## Deploy บนเซิร์ฟเวอร์ที่บ้าน (Docker)
+## Deploying on a home server (Docker)
 
-### Deploy ครั้งแรก (ด้วยมือ)
+### First deploy (by hand)
 
 ```bash
 git clone <repo> ai-city && cd ai-city
 cp .env.production.example ~/ai-city.env
-# แก้ ~/ai-city.env ใส่ POSTGRES_PASSWORD และ Groq key จริง
+# edit ~/ai-city.env: set POSTGRES_PASSWORD and your real Groq keys
 docker compose --env-file ~/ai-city.env up -d --build
 ```
 
-nginx เสิร์ฟ frontend ที่พอร์ต 80 และ proxy `/api` กับ `/socket.io` ไปที่ backend ตรวจสุขภาพได้ที่ `http://localhost/api/health`
+nginx serves the frontend on port 80 and proxies `/api` and `/socket.io` to the backend. Check health at `http://localhost/api/health`.
 
-> ถ้ามี deployment เดิมอยู่แล้ว ให้ใส่ `COMPOSE_PROJECT_NAME=<ชื่อโปรเจคเดิม>` ใน `~/ai-city.env` (ดูชื่อจาก `docker compose ls`) ไม่เช่นนั้น Docker จะสร้างฐานข้อมูลใหม่และข้อมูลเมืองเดิมจะไม่ถูกใช้
+> If this host already runs the stack, put `COMPOSE_PROJECT_NAME=<existing project name>` in `~/ai-city.env` (see `docker compose ls`). Otherwise Docker creates a new database volume and the existing city data will not be used.
 
-### อัปเดตเวอร์ชันที่ deploy อยู่
-
-```bash
-scripts/deploy.sh      # git pull + build ใหม่ + รอ health check
-```
-
-สคริปต์เตือนถ้าใน `~/ai-city.env` ไม่มี `GROQ_API_KEY_*` (ประชากรจะใช้กฎสำรองแทน LLM)
-
-> `docker compose` อ่านเฉพาะไฟล์ `.env` เองโดยอัตโนมัติ ไฟล์ความลับของโปรเจคนี้ (`~/ai-city.env`) ต้องส่งผ่าน `--env-file` เสมอ ถ้าลืม key จะว่างเปล่าแล้ว LLM จะไม่ถูกเรียกโดยไม่มี error ใดๆ ตรวจได้ด้วย `curl http://localhost/api/gateway/status` ต้องเห็น `keys` ไม่ว่าง และ `total_calls` เพิ่มขึ้นเมื่อเมืองเดิน
-
-ไม่มี CD อัตโนมัติ repo นี้เป็น public การให้ GitHub สั่งรันโค้ดบนเครื่องที่บ้าน (self-hosted runner) จึงเสี่ยงโดยไม่จำเป็น อัปเดตด้วยมือผ่านสคริปต์ด้านบนเมื่อต้องการ
-
-### สำรองและกู้ข้อมูล
-
-ข้อมูลเมืองอยู่ใน Docker volume ของ PostgreSQL บนเครื่องเดียว ควรสำรองไว้:
+### Updating a running deployment
 
 ```bash
-scripts/backup.sh              # สร้าง backups/aicity-<เวลา>.sql.gz เก็บ 14 ไฟล์ล่าสุด (ตั้ง KEEP=30 เพื่อเก็บมากขึ้น)
-scripts/restore.sh backups/aicity-XXXX.sql.gz   # กู้คืน (จะแทนที่ฐานข้อมูลปัจจุบัน)
+scripts/deploy.sh      # git pull + rebuild + wait for the health check
 ```
 
-ตั้ง cron ให้สำรองทุกวัน (`crontab -e`):
+The script warns if `~/ai-city.env` has no `GROQ_API_KEY_*` (citizens would then use the rule-based fallback instead of the LLM).
+
+> `docker compose` only reads a file named `.env` by itself. This project's secrets file (`~/ai-city.env`) must always be passed with `--env-file`. If you forget, every key is empty and the LLM is silently never called. Check with `curl http://localhost/api/gateway/status`: `keys` must not be empty and `total_calls` must grow while the city runs.
+
+There is no automatic CD. This repo is public, so letting GitHub run code on a machine at home (a self-hosted runner) is an unnecessary risk. Update by hand with the script above when you want to.
+
+### Backup and restore
+
+The city data lives in a PostgreSQL Docker volume on a single machine, so back it up:
+
+```bash
+scripts/backup.sh              # writes backups/aicity-<timestamp>.sql.gz and keeps the 14 newest (set KEEP=30 to keep more)
+scripts/restore.sh backups/aicity-XXXX.sql.gz   # restore (REPLACES the current database)
+```
+
+Run it daily from cron (`crontab -e`):
 
 ```
 30 3 * * * /path/to/ai-city/scripts/backup.sh >> /path/to/ai-city/backups/backup.log 2>&1
 ```
 
-ควรคัดลอกโฟลเดอร์ `backups/` ไปเก็บไว้อีกเครื่องหรือ cloud ด้วย เพราะถ้าดิสก์เสีย ไฟล์สำรองบนเครื่องเดียวกันจะหายไปด้วย
+Also copy `backups/` to another machine or to the cloud: if the disk dies, backups on the same disk die with it.
 
-## รันเทสต์
+## Running the tests
 
 ```bash
 cd backend
@@ -199,9 +199,9 @@ source venv/bin/activate
 pytest tests/ -v
 ```
 
-191 เทสต์ ครอบคลุม economy, zones, gateway, citizen AI, policy engine, agents, replay, รายงานสิ้นวัน และการจำลองเมืองระยะยาว (ตรวจว่าเศรษฐกิจไม่พังเป็นสภาพนิ่งตายตัว)
+191 tests covering economy, zones, gateway, citizen AI, policy engine, agents, replay, end-of-day reports, and a long-run simulation (which checks that the economy does not collapse into a frozen state).
 
-ฝั่ง frontend:
+Frontend:
 
 ```bash
 cd frontend
@@ -210,4 +210,4 @@ npx tsc --noEmit && npm run lint && npm test
 
 ## CI
 
-`.github/workflows/ci.yml` รันเมื่อ push เข้า `develop`/`main` และ PR เข้า `main` ทำ pytest ฝั่ง backend และ type-check + lint + เทสต์ฝั่ง frontend
+`.github/workflows/ci.yml` runs on pushes to `develop`/`main` and on pull requests into `main`. It runs pytest for the backend, and the type-check, lint and tests for the frontend.

@@ -118,7 +118,7 @@ export default function Dashboard() {
             />
             <ZoneStrip citizens={citizens} pops={pops} />
             {citizens.length > 0 ? (
-              <CityMap citizens={citizens} zonePops={pops} highlightId={highlightId} onHover={setHighlightId} serviceQuality={serviceQuality} day={day} running={isRunning} intervalSec={status?.tick_interval_seconds ?? 60} />
+              <CityMap citizens={citizens} zonePops={pops} highlightId={highlightId} onHover={setHighlightId} serviceQuality={serviceQuality} tick={sim.tickSeq} running={isRunning} intervalSec={status?.tick_interval_seconds ?? 60} />
             ) : (
               <div className="shimmer h-[28rem] rounded-2xl" />
             )}

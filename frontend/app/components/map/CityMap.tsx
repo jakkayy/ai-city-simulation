@@ -30,14 +30,14 @@ interface Props {
   highlightId: string | null
   onHover: (id: string | null) => void
   serviceQuality?: number
-  day?: number
+  tick?: number
   running?: boolean
   intervalSec?: number
 }
 
 // The city map: composes the world, the districts, the city core, the night layer and the
 // citizens, and owns the zoom / fullscreen / hover state. The drawing lives in the sibling files.
-export default function CityMap({ citizens, zonePops, highlightId, onHover, serviceQuality = 0, day = 0, running = false, intervalSec = 10 }: Props) {
+export default function CityMap({ citizens, zonePops, highlightId, onHover, serviceQuality = 0, tick = 0, running = false, intervalSec = 10 }: Props) {
   const { t } = useI18n()
   const [glow, setGlow] = useState(true)
   const [localHover, setLocalHover] = useState<string | null>(null)
@@ -48,7 +48,7 @@ export default function CityMap({ citizens, zonePops, highlightId, onHover, serv
     () => slots.map(({ citizen, x, y }) => ({ id: citizen.id, zone: citizen.zone, job: citizen.job_type, x: x + CORE_OFFSET.x, y: y + CORE_OFFSET.y })),
     [slots],
   )
-  const { setNight, setDusk, setLights, setClock, setChip, walkerRef, dotRef } = useMapLife({ homes, running, day, intervalSec })
+  const { setNight, setDusk, setLights, setClock, setChip, walkerRef, dotRef } = useMapLife({ homes, running, tick, intervalSec })
 
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const { fullscreen, toggle: toggleFullscreen } = useFullscreen(wrapRef)
