@@ -49,6 +49,7 @@ function subscribeConnection(notify: () => void) {
 export function useSimulation() {
   const { t } = useI18n()
   const [tick, setTick] = useState<TickData | null>(null)
+  const [tickSeq, setTickSeq] = useState(0)   // how many ticks arrived over the socket
   const [status, setStatus] = useState<SimStatus | null>(null)
   const [citizens, setCitizens] = useState<Citizen[]>([])
   const [events, setEvents] = useState<EventItem[]>([])
@@ -104,6 +105,7 @@ export function useSimulation() {
     const socket = getSocket()
     const onTick = (data: TickData) => {
       setTick(data)
+      setTickSeq((n) => n + 1)
       setCitizens(data.citizens)
       setStatus((s) => (s ? { ...s, simulation_day: data.day } : s))
       setHistory((h) => {
@@ -188,6 +190,7 @@ export function useSimulation() {
 
   return {
     tick,
+    tickSeq,
     status,
     citizens,
     events,

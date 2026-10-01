@@ -15,7 +15,7 @@ export interface Home {
 interface Args {
   homes: Home[]
   running: boolean
-  day: number
+  tick: number   // counts the ticks received over the socket; it is NOT the day number
   intervalSec: number
 }
 
@@ -48,7 +48,7 @@ export function useMapLife(args: Args) {
   const walkers = useRef(new Map<string, SVGGElement>())
   const dots = useRef(new Map<string, SVGGElement>())
   const routes = useRef(new Map<string, Cached>())
-  const time = useRef({ day: null as number | null, dayAt: 0, dur: 10000, stepAt: -1e9, display: null as number | null, lastClock: 0 })
+  const time = useRef({ tick: null as number | null, dayAt: 0, dur: 10000, stepAt: -1e9, display: null as number | null, lastClock: 0 })
 
   useEffect(() => {
     argsRef.current = args
@@ -56,16 +56,18 @@ export function useMapLife(args: Args) {
 
   // The clock free-runs with a period of one tick and is nudged towards each tick's arrival
   // (a phase-locked loop), so a late or early tick never makes the day stall or jump.
+  // Only a real tick counts. Loading the page (the city's day number arriving from the REST
+  // call) must not look like "a day just ended", or an idle city would play a day by itself.
   useEffect(() => {
     const t = time.current
     const now = performance.now()
     const dur = cycleMs(args.intervalSec)
-    if (t.day === null) {
-      t.day = args.day
+    if (t.tick === null) {
+      t.tick = args.tick
       t.dur = dur
       t.dayAt = now - (MORNING / 24) * dur
-    } else if (args.day !== t.day) {
-      t.day = args.day
+    } else if (args.tick !== t.tick) {
+      t.tick = args.tick
       if (args.running) {
         const n = Math.round((now - t.dayAt) / t.dur)
         t.dayAt += (now - (t.dayAt + n * t.dur)) * 0.5
@@ -73,7 +75,7 @@ export function useMapLife(args: Args) {
         t.stepAt = now
       }
     }
-  }, [args.day, args.running, args.intervalSec])
+  }, [args.tick, args.running, args.intervalSec])
 
   // changing the speed keeps the time of day, only the pace changes
   useEffect(() => {

@@ -47,7 +47,8 @@ export async function fetchCitizens(): Promise<Citizen[]> {
 export async function fetchReports(limit = 30): Promise<DayReport[]> {
   const res = await fetch(`${BASE}/reports?limit=${limit}`)
   if (!res.ok) throw new Error(await errorMessage(res))
-  return res.json()
+  const data = await res.json()
+  return Array.isArray(data) ? data : []   // an older or odd backend must not break the page
 }
 
 export async function fetchSnapshots(): Promise<DailySnapshot[]> {
