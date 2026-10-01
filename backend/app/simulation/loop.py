@@ -7,14 +7,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import AsyncSessionLocal
-from app.models.citizen import Citizen, JobType, Zone
+from app.models.citizen import Citizen, Zone
 from app.models.event import Event
 from app.models.snapshot import DailySnapshot
 from app.simulation.city_events import maybe_city_event
-from app.simulation.constants import CRISIS_THRESHOLDS
+from app.simulation.crisis import advisor_due, check_crisis, reset_advisor_cooldown
 from app.simulation.economy import apply_economy_tick, apply_job_market
 from app.simulation.happiness import apply_happiness_tick
-from app.simulation.state import CityState, city_state, _pending_updates, queue_llm_update, reset_city_state
+from app.simulation.snapshots import apply_citizen_state, build_snapshot_data, citizen_state
+from app.simulation.state import CityState, city_state
 from app.simulation.zones import apply_migration_tick, get_zone_populations
 import app.simulation.gateway as _gateway_module
 from app.simulation.citizen_ai import run_citizen_ai_tick
@@ -25,11 +26,6 @@ logger = logging.getLogger(__name__)
 
 _tick_lock = asyncio.Lock()
 _policy_lock = asyncio.Lock()
-
-# Policy Advisor is re-consulted at most every N days while in the same crisis level,
-# otherwise it would fire an LLM call (and a banner) on every single tick.
-_ADVISOR_COOLDOWN_DAYS = 5
-_advisor_last: tuple[int, str] | None = None   # (day, crisis_level)
 
 # injected by main.py so the loop can emit socket events
 _sio = None
@@ -66,8 +62,7 @@ async def run_tick() -> bool:
 
 def reset_loop_state() -> None:
     """Forget per-run bookkeeping (used when the city is reset)."""
-    global _advisor_last
-    _advisor_last = None
+    reset_advisor_cooldown()
 
 
 def run_day(citizens: list[Citizen], state: CityState, sim_date: date) -> tuple[dict, list[dict]]:
@@ -84,48 +79,6 @@ def run_day(citizens: list[Citizen], state: CityState, sim_date: date) -> tuple[
     if city_event:
         events.append(city_event)
     return economy_result, events
-
-
-# ── snapshot (de)serialisation ────────────────────────────────────────────
-
-_CITIZEN_FIELDS = ("happiness", "savings", "days_unhappy", "last_action")
-
-
-def _citizen_state(c: Citizen) -> dict:
-    data = {f: getattr(c, f) for f in _CITIZEN_FIELDS}
-    data["zone"] = c.zone.value
-    data["job_type"] = c.job_type.value
-    data["zone_locked_until"] = c.zone_locked_until.isoformat() if c.zone_locked_until else None
-    return data
-
-
-def _apply_citizen_state(c: Citizen, data: dict) -> None:
-    for f in _CITIZEN_FIELDS:
-        setattr(c, f, data[f])
-    c.zone = Zone(data["zone"])
-    c.job_type = JobType(data["job_type"])
-    c.zone_locked_until = date.fromisoformat(data["zone_locked_until"]) if data["zone_locked_until"] else None
-
-
-def build_snapshot_data(citizens: list[Citizen]) -> dict:
-    return {
-        "version": 1,
-        "city": {
-            "tax_rate": city_state.tax_rate,
-            "recent_policy": city_state.recent_policy,
-            "income_modifier": city_state.income_modifier,
-            "modifier_days": city_state.modifier_days,
-        },
-        "citizens": {str(c.id): _citizen_state(c) for c in citizens},
-    }
-
-
-def restore_city_from_data(data: dict) -> None:
-    city = (data or {}).get("city") or {}
-    city_state.tax_rate = city.get("tax_rate", city_state.tax_rate)
-    city_state.recent_policy = city.get("recent_policy", city_state.recent_policy)
-    city_state.income_modifier = city.get("income_modifier", 1.0)
-    city_state.modifier_days = city.get("modifier_days", 0)
 
 
 # ── internal tick logic ───────────────────────────────────────────────────
@@ -160,7 +113,7 @@ async def _do_tick(db: AsyncSession) -> None:
         for c in citizens:
             saved = city_state.replay_state.get(str(c.id))
             if saved:
-                _apply_citizen_state(c, saved)
+                apply_citizen_state(c, saved)
 
     sim_date = _EPOCH + timedelta(days=city_state.simulation_day)
 
@@ -173,7 +126,7 @@ async def _do_tick(db: AsyncSession) -> None:
 
     if replay:
         # replay never touches the database: remember the state in memory, discard ORM changes
-        city_state.replay_state = {str(c.id): _citizen_state(c) for c in citizens}
+        city_state.replay_state = {str(c.id): citizen_state(c) for c in citizens}
         city_state.simulation_day += 1
         db.expunge_all()   # detach: nothing is flushed, loaded values stay readable
         apply_fallback_tick(citizens, "")   # policy reactions are already part of the saved state
@@ -218,7 +171,7 @@ async def _do_tick(db: AsyncSession) -> None:
             await run_citizen_ai_tick(citizens, ctx, _gateway_module.llm_gateway)
 
     # step 9 — City Manager (every 7 days) and Policy Advisor (on crisis)
-    crisis = _check_crisis(avg_happiness)
+    crisis = check_crisis(avg_happiness)
     agent_ctx = {
         "day": city_state.simulation_day,
         "avg_happiness": avg_happiness,
@@ -236,7 +189,7 @@ async def _do_tick(db: AsyncSession) -> None:
         if proposal:
             await _emit("city_manager_proposal", proposal)
 
-    if not replay and crisis in ("critical", "collapse") and _advisor_due(city_state.simulation_day, crisis):
+    if not replay and crisis in ("critical", "collapse") and advisor_due(city_state.simulation_day, crisis):
         advice = await policy_advisor.advise(crisis, agent_ctx, _gateway_module.llm_gateway)
         await _emit("advisor_message", {"crisis_level": crisis, "advice": advice})
 
@@ -263,49 +216,7 @@ async def _do_tick(db: AsyncSession) -> None:
     )
 
 
-# ── startup restore ───────────────────────────────────────────────────────
-
-async def restore_from_snapshot() -> None:
-    """On server startup: resume from the latest saved snapshot."""
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(DailySnapshot)
-            .order_by(DailySnapshot.simulation_day.desc())
-            .limit(1)
-        )
-        snap = result.scalar_one_or_none()
-        if snap:
-            city_state.simulation_day = snap.simulation_day + 1
-            city_state.city_fund = snap.city_fund
-            city_state.service_quality = snap.service_quality
-            restore_city_from_data(snap.snapshot_data)
-            logger.info("Resumed from snapshot: day %d", city_state.simulation_day)
-        else:
-            logger.info("No snapshot — starting fresh from day 0")
-
-
 # ── helpers ───────────────────────────────────────────────────────────────
-
-def _advisor_due(day: int, crisis: str) -> bool:
-    """True when the advisor should speak: crisis level changed or cooldown elapsed."""
-    global _advisor_last
-    if _advisor_last is not None:
-        last_day, last_level = _advisor_last
-        if last_level == crisis and day - last_day < _ADVISOR_COOLDOWN_DAYS:
-            return False
-    _advisor_last = (day, crisis)
-    return True
-
-
-def _check_crisis(avg_happiness: float) -> str | None:
-    if avg_happiness <= CRISIS_THRESHOLDS["collapse"]:
-        return "collapse"
-    if avg_happiness <= CRISIS_THRESHOLDS["critical"]:
-        return "critical"
-    if avg_happiness <= CRISIS_THRESHOLDS["warning"]:
-        return "warning"
-    return None
-
 
 def _citizen_dict(c: Citizen) -> dict:
     return {

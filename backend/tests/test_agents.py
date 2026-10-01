@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 from app.simulation.agents import (
     CityManagerAgent,
     PolicyAdvisorAgent,
-    _parse_json_proposal,
+    parse_json_proposal,
     agent_status,
 )
 from app.simulation.state import city_state
@@ -33,25 +33,25 @@ def _no_key_gateway():
 class TestParseJsonProposal:
     def test_valid_proposal(self):
         raw = '{"policy_type":"tax_decrease","parameters":{"tax_rate":0.10},"reasoning":"lower tax"}'
-        result = _parse_json_proposal(raw)
+        result = parse_json_proposal(raw)
         assert result["policy_type"] == "tax_decrease"
         assert result["parameters"]["tax_rate"] == 0.10
 
     def test_strips_markdown(self):
         raw = '```json\n{"policy_type":"housing","parameters":{"fund_cost":500},"reasoning":"help"}\n```'
-        result = _parse_json_proposal(raw)
+        result = parse_json_proposal(raw)
         assert result["policy_type"] == "housing"
 
     def test_invalid_policy_type_returns_none(self):
         raw = '{"policy_type":"nuke_city","parameters":{},"reasoning":"boom"}'
-        assert _parse_json_proposal(raw) is None
+        assert parse_json_proposal(raw) is None
 
     def test_not_json_returns_none(self):
-        assert _parse_json_proposal("sorry I cannot help") is None
+        assert parse_json_proposal("sorry I cannot help") is None
 
     def test_embedded_json_extracted(self):
         raw = 'Sure! Here: {"policy_type":"job_program","parameters":{"fund_cost":300},"reasoning":"jobs"}'
-        result = _parse_json_proposal(raw)
+        result = parse_json_proposal(raw)
         assert result is not None
         assert result["policy_type"] == "job_program"
 

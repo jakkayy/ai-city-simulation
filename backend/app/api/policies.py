@@ -6,13 +6,8 @@ from app.db.database import get_db
 from app.models.policy import Policy
 from app.schemas.policy import EnactPolicyRequest, PolicyResponse
 from app.simulation.loop import _policy_lock
-from app.simulation.policy_engine import (
-    sanitize_policy,
-    predict_effects,
-    apply_policy_to_city,
-    apply_citizen_reactions_to_policy,
-    PolicyValidationError,
-)
+from app.simulation.policy_effects import apply_citizen_reactions_to_policy, apply_policy_to_city
+from app.simulation.policy_engine import PolicyValidationError, predict_effects, sanitize_policy
 from app.simulation.state import city_state
 
 router = APIRouter(prefix="/policies", tags=["policies"])
