@@ -28,6 +28,7 @@ export interface TickData {
   zone_populations: { A: number; B: number; C: number }
   citizens: Citizen[]
   events: SimEvent[]
+  report?: DayReport | null
 }
 
 export interface SimStatus {
@@ -104,4 +105,20 @@ export interface CityManagerProposal {
 export interface AdvisorMessage {
   crisis_level: string
   advice: string
+}
+
+export interface DayReport {
+  day: number
+  happiness: number
+  happiness_delta: number | null
+  fund: number
+  fund_delta: number | null
+  service: number
+  tax_rate: number
+  counts: { moves: number; waitlist: number; job_loss: number; job_recovery: number; bankruptcy: number }
+  city_events: Record<string, string | number>[]
+  policies: { name: string; type: string }[]
+  crisis: "warning" | "critical" | "collapse" | null
+  highlight: boolean
+  narrative?: { th: string; en: string }
 }

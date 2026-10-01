@@ -1,4 +1,4 @@
-import type { Citizen, SimStatus, DailySnapshot, PolicyType, PolicyResponse, GatewayStatus } from "./types"
+import type { Citizen, DayReport, SimStatus, DailySnapshot, PolicyType, PolicyResponse, GatewayStatus } from "./types"
 
 const BASE = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000") + "/api"
 
@@ -42,6 +42,12 @@ export async function fetchCitizens(): Promise<Citizen[]> {
     last_action: c.last_action,
     pending_reaction: c.pending_reaction,
   }))
+}
+
+export async function fetchReports(limit = 30): Promise<DayReport[]> {
+  const res = await fetch(`${BASE}/reports?limit=${limit}`)
+  if (!res.ok) throw new Error(await errorMessage(res))
+  return res.json()
 }
 
 export async function fetchSnapshots(): Promise<DailySnapshot[]> {

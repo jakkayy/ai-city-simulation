@@ -119,7 +119,7 @@ export default function Guide({ open, onClose }: Props) {
 
           {tab === "faq" && (
             <dl className="flex flex-col gap-4">
-              {[1, 2, 3, 4, 5, 6].map((n) => (
+              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
                 <div key={n}>
                   <dt className="font-semibold text-white">{t(`guide.q${n}`)}</dt>
                   <dd className="mt-1">{t(`guide.a${n}`)}</dd>

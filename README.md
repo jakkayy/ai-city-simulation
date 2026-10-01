@@ -25,6 +25,7 @@
 - **รูปโปรไฟล์ประชากร** สร้างจากโค้ด (SVG) หน้าตาไม่ซ้ำและคงที่ตาม ID สีหน้าเปลี่ยนตามความสุข (ยิ้ม/เฉย/หน้าบึ้ง) และมีเครื่องประกอบตามอาชีพ เช่น หมวกแรงงาน แว่นครู เนคไทเจ้าของธุรกิจ ไม่พึ่งบริการภายนอก
 - **แผนที่ที่ซูมและเต็มจอได้** ซูม (ปุ่ม / Ctrl + ล้อเมาส์ / ดับเบิลคลิก / pinch) ลากเลื่อน โฟกัสกลางเมือง และเต็มจอ รอบเมืองมีแม่น้ำ สะพาน ท่าเรือ โรงเรียน โรงพยาบาล โรงงาน และฟาร์ม ป้ายตัวเลขแสดงจำนวนคนที่ทำงานที่นั่นตามอาชีพจริง
 - **เมืองที่มีชีวิต** เวลาในเมืองเดินตามวัน (1 วัน = 1 tick) มีกลางวัน กลางคืน รุ่งเช้าและพลบค่ำ ไฟถนนและหน้าต่างเปิดตอนค่ำ เช้าประชากรเดินทางไปทำงานตามอาชีพจริง (ครู→โรงเรียน แรงงาน→โรงงาน เกษตรกร→ฟาร์ม พนักงานบริการ→ตลาด เจ้าของธุรกิจ/ผู้เชี่ยวชาญ→ใจกลางเมือง คนว่างงาน→สวนสาธารณะ) เย็นกลับบ้าน ขณะที่ไปทำงานจุดบ้านจะจางลง
+- **รายงานสิ้นวัน** ทุกวันที่จบ เมืองสรุปตัวเลขและเหตุการณ์ของวันนั้นเก็บในฐานข้อมูล ดูย้อนหลังได้ที่แท็บ “รายงานรายวัน” วันสำคัญ (วิกฤต เหตุการณ์ของเมือง ความสุขเปลี่ยนมาก ล้มละลายหลายคน) จะเด้งสรุปให้ และถ้าตั้ง Groq key จะมีข้อความเล่าเรื่องจาก AI เพิ่ม (ไทย+อังกฤษ ใช้โควตา 1 ครั้งต่อวัน ทำงานเบื้องหลังไม่หน่วงเมือง)
 - **แดชบอร์ดเรียลไทม์** กราฟแนวโน้ม แผนที่เมืองที่ประชากรเคลื่อนที่ข้ามโซนแบบ smooth ฟีดเหตุการณ์ และตัวกรองรายชื่อประชากร
 
 > Replay ทำงานบนสำเนาในหน่วยความจำ ไม่แตะข้อมูลจริง ผลเหมือนเดิมทุกครั้ง (seed ตามวัน) ย้อนดูได้เฉพาะวันที่บันทึกหลังอัปเดตที่เก็บสถานะประชากรไว้ใน snapshot
@@ -51,7 +52,7 @@ backend/app/
   api/                  REST endpoints
     simulation.py         start / stop / step / speed / status
     history.py            snapshots, replay, reset city
-    policies.py  citizens.py  agents.py  gateway_status.py
+    policies.py  citizens.py  agents.py  gateway_status.py  reports.py
   simulation/           ตัวเกม (ไม่ผูกกับ HTTP)
     loop.py               1 tick = 1 วัน: เรียงลำดับขั้นตอนทั้งหมด + broadcast
     economy.py  happiness.py  zones.py  city_events.py   กติกาของเมือง
@@ -59,11 +60,12 @@ backend/app/
     policy_effects.py     ผลของนโยบายต่อเมืองและประชากร
     snapshots.py          บันทึก/กู้สถานะเมือง (ใช้ใน replay)
     crisis.py             ระดับวิกฤต + cooldown ของ Policy Advisor
+    reports.py            รายงานสิ้นวัน + ข้อความเล่าเรื่องจาก LLM
     citizen_ai.py  fallback.py  gateway.py   LLM (ประชากร, กฎสำรอง, สลับ key/โควตา)
     agents/               City Manager, Policy Advisor, สถานะ, ตัวแปลง JSON
     state.py  constants.py  ค่าและสถานะส่วนกลาง
   models/  schemas/  db/  SQLAlchemy models, schemas, seed
-backend/tests/          pytest (171 เทสต์ รวมการจำลองเมืองระยะยาว)
+backend/tests/          pytest (191 เทสต์ รวมการจำลองเมืองระยะยาว)
 
 frontend/app/
   components/
@@ -72,7 +74,7 @@ frontend/app/
     stats/                การ์ดสถิติ โซน สรุปสถานะเมือง
     map/                  แผนที่: CityMap (ประกอบ) + Ground/Roads/ZonePanel/World/Districts/NightLayer ...
     citizens/             รายชื่อประชากร การ์ด รูปโปรไฟล์
-    feed/                 ฟีดเหตุการณ์ ประวัตินโยบาย
+    feed/                 แผงฟีด (เหตุการณ์สด + รายงานรายวัน) ป๊อปอัปสรุปวัน ประวัตินโยบาย
     panels/               ออกนโยบาย ย้อนดู สถานะ AI คู่มือ
     ui/                   ส่วนประกอบกลาง: Select, Hint, Toasts, AnimatedNumber, Sparkline
   lib/
@@ -80,7 +82,7 @@ frontend/app/
     api.ts  types.ts  socket.ts  mood.ts  avatar.ts  events.ts  actions.ts  policies.ts
     i18n/                 th.ts, en.ts (ต้องมีคีย์ตรงกัน มีเทสต์ตรวจ) + hook
     map/                  เรขาคณิตของแผนที่ (mapLayout, coreLayout), ซูม/เลื่อน, เวลา, การเดินทางไปทำงาน
-  lib/**/__tests__/     vitest (72 เทสต์)
+  lib/**/__tests__/     vitest (80 เทสต์)
 scripts/                backup.sh / restore.sh / deploy.sh
 ```
 
@@ -197,7 +199,7 @@ source venv/bin/activate
 pytest tests/ -v
 ```
 
-171 เทสต์ ครอบคลุม economy, zones, gateway, citizen AI, policy engine, agents, replay และการจำลองเมืองระยะยาว (ตรวจว่าเศรษฐกิจไม่พังเป็นสภาพนิ่งตายตัว)
+191 เทสต์ ครอบคลุม economy, zones, gateway, citizen AI, policy engine, agents, replay, รายงานสิ้นวัน และการจำลองเมืองระยะยาว (ตรวจว่าเศรษฐกิจไม่พังเป็นสภาพนิ่งตายตัว)
 
 ฝั่ง frontend:
 

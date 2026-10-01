@@ -8,7 +8,8 @@ import type { CityManagerProposal, PolicyType } from "../lib/types"
 import Alerts from "./Alerts"
 import CitizenGrid from "./citizens/CitizenGrid"
 import CityMap from "./map/CityMap"
-import EventFeed from "./feed/EventFeed"
+import FeedPanel from "./feed/FeedPanel"
+import ReportPopup from "./feed/ReportPopup"
 import CitySummary from "./stats/CitySummary"
 import Guide, { hasSeenGuide } from "./panels/Guide"
 import Header from "./header/Header"
@@ -125,12 +126,13 @@ export default function Dashboard() {
           </div>
 
           <div className="flex flex-col gap-4 xl:sticky xl:top-4 xl:self-start">
-            <EventFeed events={sim.events} />
+            <FeedPanel events={sim.events} reports={sim.reports} />
             <PolicyHistory version={policyVersion} />
           </div>
         </div>
       </div>
 
+      <ReportPopup report={sim.popupReport} onClose={sim.closeReportPopup} />
       <Toasts toasts={sim.toasts} />
       <Guide open={guideOpen} onClose={() => setGuideOpen(false)} />
     </main>
