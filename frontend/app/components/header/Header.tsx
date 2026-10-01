@@ -1,9 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { useI18n } from "../../lib/i18n"
 import AnimatedNumber from "../ui/AnimatedNumber"
 import LangToggle from "./LangToggle"
+import ResetButton from "./ResetButton"
+import SpeedControl from "./SpeedControl"
+import StatusPill from "./StatusPill"
 import GatewayStatusPanel from "../panels/GatewayStatusPanel"
 import PolicyPanel from "../panels/PolicyPanel"
 import ReplayPanel from "../panels/ReplayPanel"
@@ -24,56 +26,6 @@ interface Props {
   speed: number
   onSpeed: (seconds: number) => void
   onReset: () => void
-}
-
-const SPEEDS = [
-  { key: "slow", seconds: 120 },
-  { key: "normal", seconds: 60 },
-  { key: "fast", seconds: 30 },
-  { key: "turbo", seconds: 10 },
-] as const
-
-function ResetButton({ disabled, onReset }: { disabled: boolean; onReset: () => void }) {
-  const { t } = useI18n()
-  const [armed, setArmed] = useState(false)
-  useEffect(() => {
-    if (!armed) return
-    const id = setTimeout(() => setArmed(false), 4000)
-    return () => clearTimeout(id)
-  }, [armed])
-  return (
-    <button
-      className={`btn focus-ring ${armed ? "btn-danger" : ""}`}
-      disabled={disabled}
-      title={t("reset.hint")}
-      onClick={() => {
-        if (armed) { setArmed(false); onReset() } else setArmed(true)
-      }}
-    >
-      {armed ? t("reset.confirm") : t("reset.btn")}
-    </button>
-  )
-}
-
-function StatusPill({ connected, isRunning, replayMode }: Pick<Props, "connected" | "isRunning" | "replayMode">) {
-  const { t } = useI18n()
-  const cfg = !connected
-    ? { label: t("status.offline"), color: "#fb7185" }
-    : replayMode
-      ? { label: t("status.replay"), color: "#a78bfa" }
-      : isRunning
-        ? { label: t("status.live"), color: "#34d399" }
-        : { label: t("status.paused"), color: "#fbbf24" }
-
-  return (
-    <span
-      className="th-plain inline-flex h-6 items-center gap-2 rounded-full border px-2.5 text-[11px] font-bold uppercase tracking-[0.14em]"
-      style={{ color: cfg.color, borderColor: `${cfg.color}55`, background: `${cfg.color}14` }}
-    >
-      <span className={isRunning || replayMode ? "live-dot" : "h-2 w-2 rounded-full bg-current"} />
-      {cfg.label}
-    </span>
-  )
 }
 
 export default function Header(p: Props) {
@@ -121,19 +73,7 @@ export default function Header(p: Props) {
           />
           {!p.replayMode && (
             <>
-              <div className="flex h-[2.4rem] items-center rounded-xl border border-slate-400/20 bg-slate-800/50 p-0.5" role="group" aria-label={t("speed.label")}>
-                {SPEEDS.map((sp) => (
-                  <button
-                    key={sp.key}
-                    onClick={() => p.onSpeed(sp.seconds)}
-                    aria-pressed={p.speed === sp.seconds}
-                    title={t("speed.hint", { s: sp.seconds })}
-                    className={`focus-ring h-full rounded-[0.6rem] px-2.5 text-xs font-bold transition ${p.speed === sp.seconds ? "bg-cyan-300 text-slate-950" : "text-slate-400 hover:text-white"}`}
-                  >
-                    {t(`speed.${sp.key}`)}
-                  </button>
-                ))}
-              </div>
+              <SpeedControl speed={p.speed} onSpeed={p.onSpeed} />
               <ResetButton disabled={p.isRunning || p.busy} onReset={p.onReset} />
               <button onClick={p.onStep} disabled={p.isRunning || p.busy} className="btn focus-ring" title={t("btn.step.hint")}>
                 {t("btn.step")}

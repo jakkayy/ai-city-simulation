@@ -3,23 +3,12 @@
 import { useEffect, useState } from "react"
 import { fetchPolicies } from "../../lib/api"
 import { useI18n } from "../../lib/i18n"
+import { formatStoredParams } from "../../lib/policies"
 import type { PolicyResponse } from "../../lib/types"
 
 interface Props {
   // changes whenever a policy may have been enacted, to trigger a reload
   version: number
-}
-
-function formatParams(params: Record<string, unknown>): string {
-  return Object.entries(params)
-    .map(([k, v]) => {
-      const n = Number(v)
-      if (k === "tax_rate") return `${Math.round(n * 100)}%`
-      if (k === "fund_cost") return `$${n.toLocaleString("en-US")}`
-      if (k === "unemployment_reduction") return `${Math.round((n > 1 ? n : n * 100))}%`
-      return n > 0 ? `+${n}` : `${n}`
-    })
-    .join(" · ")
 }
 
 export default function PolicyHistory({ version }: Props) {
@@ -51,7 +40,7 @@ export default function PolicyHistory({ version }: Props) {
               </div>
               <div className="mt-0.5 flex items-center justify-between gap-2 text-xs text-slate-400">
                 <span>{t(`pol.${p.policy_type}`)}</span>
-                <span className="num text-cyan-200/80">{formatParams(p.parameters)}</span>
+                <span className="num text-cyan-200/80">{formatStoredParams(p.parameters)}</span>
               </div>
             </li>
           ))}

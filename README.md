@@ -4,7 +4,7 @@
 
 ## โปรเจคนี้เอาไว้ทำอะไร
 
-1. **เรียนรู้และโชว์ฝีมือ (portfolio)** ครอบคลุม LLM agent, ระบบ real-time (socket.io), async backend, ฐานข้อมูล, Docker, CI/CD และเทสต์ 168 ตัว จุดที่น่าสนใจคือ LLM gateway ที่สลับหลาย key และจัดการโควตา, ระบบ fallback เมื่อ LLM ใช้ไม่ได้ และ agent ระดับเมือง
+1. **เรียนรู้และโชว์ฝีมือ (portfolio)** ครอบคลุม LLM agent, ระบบ real-time (socket.io), async backend, ฐานข้อมูล, Docker, CI/CD และเทสต์กว่า 240 ตัว จุดที่น่าสนใจคือ LLM gateway ที่สลับหลาย key และจัดการโควตา, ระบบ fallback เมื่อ LLM ใช้ไม่ได้ และ agent ระดับเมือง
 2. **สนามทดลอง multi-agent AI** ดูว่า AI 50 ตัวที่ตอบสนองต่อเหตุการณ์เดียวกันให้พฤติกรรมรวมออกมาอย่างไร ทดลอง prompt, ต้นทุน/โควตา LLM และการเลือกระหว่าง "ให้ AI คิด" กับ "ใช้กฎธรรมดา"
 3. **เกมหรือของเล่นเชิงการศึกษาแบบเบาๆ** ให้เห็นภาพ trade-off ของนโยบาย เช่น ลดภาษีแล้วงบหาย ขึ้นภาษีแล้วประชากรไม่พอใจ
 
@@ -46,17 +46,45 @@ Next.js (frontend) ──── nginx ──── FastAPI + socket.io (backend)
 ## โครงสร้างโปรเจค
 
 ```
-backend/
-  app/api/          REST endpoints (simulation, policies, citizens, agents, gateway)
-  app/simulation/   ตัวเกมหลัก: loop, economy, zones, policy_engine, citizen_ai, agents, gateway
-  app/models/       SQLAlchemy models
-  alembic/          database migrations
-  tests/            pytest (168 เทสต์ รวมการจำลองเมืองระยะยาว 600 วัน)
+backend/app/
+  main.py               FastAPI + socket.io, scheduler, startup (lifespan)
+  api/                  REST endpoints
+    simulation.py         start / stop / step / speed / status
+    history.py            snapshots, replay, reset city
+    policies.py  citizens.py  agents.py  gateway_status.py
+  simulation/           ตัวเกม (ไม่ผูกกับ HTTP)
+    loop.py               1 tick = 1 วัน: เรียงลำดับขั้นตอนทั้งหมด + broadcast
+    economy.py  happiness.py  zones.py  city_events.py   กติกาของเมือง
+    policy_engine.py      ตรวจพารามิเตอร์นโยบาย + ทำนายผล
+    policy_effects.py     ผลของนโยบายต่อเมืองและประชากร
+    snapshots.py          บันทึก/กู้สถานะเมือง (ใช้ใน replay)
+    crisis.py             ระดับวิกฤต + cooldown ของ Policy Advisor
+    citizen_ai.py  fallback.py  gateway.py   LLM (ประชากร, กฎสำรอง, สลับ key/โควตา)
+    agents/               City Manager, Policy Advisor, สถานะ, ตัวแปลง JSON
+    state.py  constants.py  ค่าและสถานะส่วนกลาง
+  models/  schemas/  db/  SQLAlchemy models, schemas, seed
+backend/tests/          pytest (171 เทสต์ รวมการจำลองเมืองระยะยาว)
+
 frontend/app/
-  components/       Dashboard, CityMap, StatCards, EventFeed, ...
-  lib/              useSimulation (state + socket), api, types, i18n (+ vitest)
-scripts/            backup.sh / restore.sh (สำรองและกู้ฐานข้อมูล)
+  components/
+    Dashboard.tsx         ประกอบหน้า
+    header/               ส่วนหัว: ปุ่มควบคุม ความเร็ว สถานะ ภาษา
+    stats/                การ์ดสถิติ โซน สรุปสถานะเมือง
+    map/                  แผนที่: CityMap (ประกอบ) + Ground/Roads/ZonePanel/World/Districts/NightLayer ...
+    citizens/             รายชื่อประชากร การ์ด รูปโปรไฟล์
+    feed/                 ฟีดเหตุการณ์ ประวัตินโยบาย
+    panels/               ออกนโยบาย ย้อนดู สถานะ AI คู่มือ
+    ui/                   ส่วนประกอบกลาง: Select, Hint, Toasts, AnimatedNumber, Sparkline
+  lib/
+    useSimulation.ts      state + socket + REST ของทั้งหน้า
+    api.ts  types.ts  socket.ts  mood.ts  avatar.ts  events.ts  actions.ts  policies.ts
+    i18n/                 th.ts, en.ts (ต้องมีคีย์ตรงกัน มีเทสต์ตรวจ) + hook
+    map/                  เรขาคณิตของแผนที่ (mapLayout, coreLayout), ซูม/เลื่อน, เวลา, การเดินทางไปทำงาน
+  lib/**/__tests__/     vitest (72 เทสต์)
+scripts/                backup.sh / restore.sh / deploy.sh
 ```
+
+กติกาเวลาเพิ่มของ: ค่าเกมแก้ที่ `constants.py` (ฝั่ง backend) ข้อความทุกภาษาแก้ที่ `lib/i18n/th.ts` และ `en.ts` พร้อมกัน ข้อมูลเรขาคณิตของแผนที่อยู่ใน `lib/map/` ไม่ปนในคอมโพเนนต์
 
 ## เริ่มพัฒนาบนเครื่อง
 
@@ -169,7 +197,7 @@ source venv/bin/activate
 pytest tests/ -v
 ```
 
-168 เทสต์ ครอบคลุม economy, zones, gateway, citizen AI, policy engine, agents, replay และการจำลองเมืองระยะยาว (ตรวจว่าเศรษฐกิจไม่พังเป็นสภาพนิ่งตายตัว)
+171 เทสต์ ครอบคลุม economy, zones, gateway, citizen AI, policy engine, agents, replay และการจำลองเมืองระยะยาว (ตรวจว่าเศรษฐกิจไม่พังเป็นสภาพนิ่งตายตัว)
 
 ฝั่ง frontend:
 
