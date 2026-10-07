@@ -1,0 +1,72 @@
+name: Notify
+
+# Posts to Discord when a pull request is opened, reopened or merged, and when CI fails or
+# a push to main passes. The webhook URL is the repository secret DISCORD_WEBHOOK_URL
+# (a *repository* secret, not an environment secret); without it every step skips quietly,
+# which is also what happens on pull requests from forks and on Dependabot runs.
+#
+# The logic lives in scripts/notify-discord.sh. Nothing here checks out or runs code from a
+# pull request: the pull_request job runs the script from the PR's own merge commit, but only
+# same-repository PRs receive the secret, and the workflow_run job always uses the default branch.
+#
+# workflow_run only fires for workflow files on the default branch, so the CI messages start
+# once this file is on main. The pull request messages work as soon as it is in the PR.
+
+on:
+  pull_request:
+    types: [opened, reopened, closed]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  pull-request:
+    name: Pull request
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Post to Discord
+        env:
+          MODE: pr
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          REPO: ${{ github.repository }}
+          ACTION: ${{ github.event.action }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          URL: ${{ github.event.pull_request.html_url }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: bash scripts/notify-discord.sh
+
+  ci:
+    name: CI result
+    # cancelled and skipped runs (superseded by a newer push) are filtered out by the script too
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-latest
+    steps:
+      # for workflow_run this is the default branch, i.e. trusted code
+      - uses: actions/checkout@v4
+
+      - name: Post to Discord
+        env:
+          MODE: ci
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          EVENT: ${{ github.event.workflow_run.event }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          MESSAGE: ${{ github.event.workflow_run.head_commit.message }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          ACTOR: ${{ github.event.workflow_run.actor.login }}
+        run: bash scripts/notify-discord.sh

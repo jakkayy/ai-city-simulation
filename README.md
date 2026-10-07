@@ -214,11 +214,25 @@ npx tsc --noEmit && npm run lint && npm test
 
 ### Discord notifications
 
-The `notify` job at the end of the workflow posts the result of each run to a Discord channel through an incoming webhook (`scripts/notify-discord.sh`).
+`.github/workflows/notify.yml` (a separate workflow, logic in `scripts/notify-discord.sh`) posts to a Discord channel through an incoming webhook:
+
+| Event | Message |
+|---|---|
+| a pull request is opened or reopened | 📬 Opened / 🔁 Reopened PR #n |
+| a pull request is merged | 🔀 Merged PR #n (closing without merging is silent) |
+| CI fails (any branch, any event) | ❌ CI failed, with the names of the failed jobs |
+| CI passes on a push to `main` | ✅ CI passed on main |
+
+A green run on `develop` or on a pull request stays quiet, and so do cancelled or skipped runs (superseded by a newer push).
 
 Setup:
 
 1. In Discord: channel settings → Integrations → Webhooks → New Webhook → copy the URL.
-2. In GitHub: repository → Settings → Secrets and variables → Actions → **Repository secrets** → New secret named `DISCORD_WEBHOOK_URL`. (An *environment* secret is not visible to this job.)
+2. In GitHub: repository → Settings → Secrets and variables → Actions → **Repository secrets** → New secret named `DISCORD_WEBHOOK_URL`. (An *environment* secret is not visible to this workflow.)
 
-Who gets told: every failed or cancelled run, every pull request into `main`, and every push to `main`. A green push to `develop` stays quiet. Without the secret (forks, Dependabot) the step skips quietly. The webhook URL is never printed, commit messages and PR titles are passed as environment variables and JSON-escaped by `jq`, mentions are disabled, and a Discord outage cannot make CI fail. You can try the script locally against any webhook by setting the variables listed at the top of the script.
+Notes:
+
+- The CI messages use `workflow_run`, which GitHub only fires for workflow files on the default branch, so they start once `notify.yml` is on `main`. The pull request messages work as soon as the file is in the PR.
+- Without the secret (pull requests from forks, Dependabot) every step skips quietly.
+- The webhook URL is never printed; commit messages and PR titles reach the script as environment variables, only the first line is used, JSON is built by `jq`, and mentions are disabled (an `@everyone` in a commit message does not ping anyone). A Discord outage cannot fail the workflow.
+- To try the script locally, set `MODE` and the variables listed at the top of `scripts/notify-discord.sh`.

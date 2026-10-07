@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
-# Post the result of a CI run to Discord. Used by .github/workflows/ci.yml.
+# Post a GitHub event to Discord. Used by .github/workflows/notify.yml.
 #
 # Everything comes in through environment variables. Commit messages and PR titles are
 # untrusted text, so they are never interpolated into this script or into JSON by hand:
 # the payload is built with jq, which escapes it.
 #
-# This script never fails the pipeline: a Discord outage must not turn CI red.
+# This script never fails the workflow: a Discord outage must not turn anything red.
 #
+# Common
+#   MODE                  pr | ci
 #   DISCORD_WEBHOOK_URL   the secret; unset/empty (forks, Dependabot) = skip quietly
-#   BACKEND_RESULT        result of the backend job   (success | failure | cancelled | skipped)
-#   FRONTEND_RESULT       result of the frontend job
-#   EVENT_NAME            push | pull_request
-#   BRANCH                branch name (head branch for pull requests)
-#   ACTOR  REPO  SHA  RUN_URL  MESSAGE (commit message)  PR_NUMBER  PR_TITLE  PR_URL
 #
-# Who gets told: every failure or cancellation, every pull request, and every push to main.
-# A green push to develop stays quiet.
+# MODE=pr  (a pull request was opened, reopened or closed)
+#   ACTION  MERGED  NUMBER  TITLE  URL  AUTHOR  HEAD  BASE
+#   Told: opened, reopened, merged. A PR closed without merging is not worth a message.
+#
+# MODE=ci  (the CI workflow finished)
+#   CONCLUSION  EVENT (push | pull_request)  BRANCH  SHA  MESSAGE (commit message)  RUN_URL  ACTOR  REPO
+#   FAILED_JOBS (optional)  names of the failed jobs, e.g. "Backend tests"
+#   (if empty and GH_TOKEN + RUN_ID are set, the names are looked up with the GitHub CLI)
+#   Told: every failure, and every green push to main. A green push to develop stays quiet,
+#   and cancelled / skipped runs (superseded by a newer push) are ignored.
 
 set -uo pipefail
 
@@ -34,81 +39,97 @@ case "$url" in
     ;;
 esac
 
-backend="${BACKEND_RESULT:-skipped}"
-frontend="${FRONTEND_RESULT:-skipped}"
+mode="${MODE:-}"
 
-if [ "$backend" = failure ] || [ "$frontend" = failure ]; then
-  overall=failure
-elif [ "$backend" = cancelled ] || [ "$frontend" = cancelled ]; then
-  overall=cancelled
-elif [ "$backend" = skipped ] && [ "$frontend" = skipped ]; then
-  echo "Nothing ran: skipping the Discord notification."
-  exit 0
-else
-  overall=success
-fi
+# ── decide what to say ────────────────────────────────────────────────────
 
-event="${EVENT_NAME:-push}"
-branch="${BRANCH:-unknown}"
+title=""; subject=""; link=""; color=0
+fields='[]'      # a JSON array of {name, value, inline}
+footer=""
 
-if [ "$overall" = success ] && [ "$event" = push ] && [ "$branch" != main ]; then
-  echo "Green push to '$branch': not notifying."
-  exit 0
-fi
+case "$mode" in
+  pr)
+    case "${ACTION:-}/${MERGED:-false}" in
+      closed/true) title="🔀 Merged"; color=10181046 ;;
+      closed/*)    echo "Pull request closed without merging: nothing to say."; exit 0 ;;
+      reopened/*)  title="🔁 Reopened"; color=3447003 ;;
+      opened/*)    title="📬 Opened"; color=3447003 ;;
+      *)           echo "Pull request action '${ACTION:-}' is not announced."; exit 0 ;;
+    esac
+    title="$title PR #${NUMBER:-?}"
+    subject="${TITLE:-}"
+    link="${URL:-}"
+    fields="$(jq -n --arg head "${HEAD:-?}" --arg base "${BASE:-?}" --arg by "${AUTHOR:--}" \
+      '[{name:"Branch", value:($head + " → " + $base), inline:true}, {name:"By", value:$by, inline:true}]')"
+    footer="${REPO:-}"
+    ;;
 
-icon() {
-  case "$1" in
-    success) echo "✅" ;;
-    failure) echo "❌" ;;
-    cancelled) echo "⚠️" ;;
-    *) echo "➖" ;;
-  esac
-}
+  ci)
+    conclusion="${CONCLUSION:-}"
+    event="${EVENT:-push}"
+    branch="${BRANCH:-unknown}"
 
-case "$overall" in
-  success) title="✅ CI passed"; color=3066993 ;;
-  failure) title="❌ CI failed"; color=15158332 ;;
-  *) title="⚠️ CI cancelled"; color=16098851 ;;
+    case "$conclusion" in
+      success)
+        if [ "$event" != push ] || [ "$branch" != main ]; then
+          echo "Green run on '$branch' ($event): not notifying."
+          exit 0
+        fi
+        title="✅ CI passed on main"; color=5763719
+        ;;
+      failure | timed_out | startup_failure)
+        title="❌ CI failed"; color=15548997
+        ;;
+      *)
+        echo "CI run ended as '$conclusion': not notifying."
+        exit 0
+        ;;
+    esac
+
+    failed="${FAILED_JOBS:-}"
+    if [ -z "$failed" ] && [ "$conclusion" != success ] && [ -n "${GH_TOKEN:-}" ] && [ -n "${RUN_ID:-}" ] \
+       && [ -n "${REPO:-}" ] && command -v gh >/dev/null 2>&1; then
+      failed="$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" \
+        --jq '[.jobs[] | select(.conclusion == "failure") | .name] | join(", ")' 2>/dev/null || true)"
+    fi
+
+    subject="$(printf '%s' "${MESSAGE:-}" | head -n 1)"
+    link="${RUN_URL:-}"
+    fields="$(jq -n --arg branch "$branch" --arg by "${ACTOR:--}" --arg failed "$failed" \
+      '[{name:"Branch", value:$branch, inline:true}, {name:"By", value:$by, inline:true}]
+       + (if $failed != "" then [{name:"Failed", value:$failed, inline:false}] else [] end)')"
+    footer="${REPO:-} · ${SHA:0:7}"
+    ;;
+
+  *)
+    echo "Unknown MODE '$mode': skipping."
+    exit 0
+    ;;
 esac
 
-# first line only, trimmed
-if [ "$event" = pull_request ] && [ -n "${PR_TITLE:-}" ]; then
-  subject="PR #${PR_NUMBER:-?}: ${PR_TITLE}"
-  link="${PR_URL:-${RUN_URL:-}}"
-else
-  subject="$(printf '%s' "${MESSAGE:-}" | head -n 1)"
-  link="${RUN_URL:-}"
-fi
 subject="${subject:0:200}"
 [ -z "$subject" ] && subject="(no message)"
+
+# ── send ──────────────────────────────────────────────────────────────────
 
 payload="$(jq -n \
   --arg title "$title" \
   --arg subject "$subject" \
   --arg link "$link" \
-  --arg runurl "${RUN_URL:-}" \
-  --arg repo "${REPO:-}" \
-  --arg branch "$branch" \
-  --arg actor "${ACTOR:-}" \
-  --arg sha "${SHA:0:7}" \
-  --arg backend "$(icon "$backend") backend: $backend" \
-  --arg frontend "$(icon "$frontend") frontend: $frontend" \
+  --arg footer "$footer" \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --argjson color "$color" \
+  --argjson fields "$fields" \
   '{
-    username: "CI",
+    username: "GitHub",
     allowed_mentions: { parse: [] },
     embeds: [{
       title: $title,
       description: $subject,
       url: (if $link != "" then $link else null end),
       color: $color,
-      fields: [
-        { name: "Branch", value: $branch, inline: true },
-        { name: "By", value: (if $actor != "" then $actor else "-" end), inline: true },
-        { name: "Jobs", value: ($backend + "\n" + $frontend + (if $runurl != "" then "\n[Open the run](" + $runurl + ")" else "" end)), inline: false }
-      ],
-      footer: { text: ($repo + " · " + $sha) },
+      fields: $fields,
+      footer: { text: $footer },
       timestamp: $ts
     }]
   }')" || { echo "Could not build the Discord payload: skipping."; exit 0; }
@@ -117,7 +138,7 @@ code="$(curl --silent --show-error --max-time 15 --output /dev/null --write-out 
   --header 'Content-Type: application/json' --data "$payload" "$url" 2>/dev/null)" || code="000"
 
 case "$code" in
-  2??) echo "Discord notification sent ($overall)." ;;
+  2??) echo "Discord notification sent ($mode: $title)." ;;
   *) echo "Discord notification not delivered (HTTP $code); continuing." ;;
 esac
 exit 0
