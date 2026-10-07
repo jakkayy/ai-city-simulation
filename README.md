@@ -211,3 +211,29 @@ npx tsc --noEmit && npm run lint && npm test
 ## CI
 
 `.github/workflows/ci.yml` runs on pushes to `develop`/`main` and on pull requests into `main`. It runs pytest for the backend, and the type-check, lint and tests for the frontend.
+
+### Discord notifications
+
+`.github/workflows/notify.yml` (a separate workflow, logic in `scripts/notify-discord.sh`) posts to a Discord channel through an incoming webhook:
+
+| Event | Message |
+|---|---|
+| a pull request is opened or reopened | 📬 Opened / 🔁 Reopened PR #n |
+| a pull request is merged | 🔀 Merged PR #n (closing without merging is silent) |
+| CI fails (any branch, any event) | ❌ CI failed, with the names of the failed jobs |
+| CI passes on a push to `main` | ✅ CI passed on main |
+
+A green run on `develop` or on a pull request stays quiet, and so do cancelled or skipped runs (superseded by a newer push).
+
+Setup:
+
+1. In Discord: channel settings → Integrations → Webhooks → New Webhook → copy the URL.
+2. In GitHub: repository → Settings → Secrets and variables → Actions → **Repository secrets** → New secret named `DISCORD_WEBHOOK_URL`. (An *environment* secret is not visible to this workflow.)
+
+Notes:
+
+- The CI messages use `workflow_run`, which GitHub only fires for workflow files on the default branch, so they start once `notify.yml` is on `main`. The pull request messages work as soon as the file is in the PR.
+- Without the secret (pull requests from forks, Dependabot) every step skips quietly.
+- The webhook URL is never printed; commit messages and PR titles reach the script as environment variables, only the first line is used, JSON is built by `jq`, and mentions are disabled (an `@everyone` in a commit message does not ping anyone). A Discord outage cannot fail the workflow.
+- The sender name shown in Discord is `ai-city`. To change it, set a `DISCORD_USERNAME` variable in the workflow's `env:` (Discord refuses names containing "discord" or "clyde"; those fall back to `ai-city`). The avatar is the one set on the webhook in Discord.
+- To try the script locally, set `MODE` and the variables listed at the top of `scripts/notify-discord.sh`.
