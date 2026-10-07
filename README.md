@@ -211,3 +211,14 @@ npx tsc --noEmit && npm run lint && npm test
 ## CI
 
 `.github/workflows/ci.yml` runs on pushes to `develop`/`main` and on pull requests into `main`. It runs pytest for the backend, and the type-check, lint and tests for the frontend.
+
+### Discord notifications
+
+The `notify` job at the end of the workflow posts the result of each run to a Discord channel through an incoming webhook (`scripts/notify-discord.sh`).
+
+Setup:
+
+1. In Discord: channel settings → Integrations → Webhooks → New Webhook → copy the URL.
+2. In GitHub: repository → Settings → Secrets and variables → Actions → **Repository secrets** → New secret named `DISCORD_WEBHOOK_URL`. (An *environment* secret is not visible to this job.)
+
+Who gets told: every failed or cancelled run, every pull request into `main`, and every push to `main`. A green push to `develop` stays quiet. Without the secret (forks, Dependabot) the step skips quietly. The webhook URL is never printed, commit messages and PR titles are passed as environment variables and JSON-escaped by `jq`, mentions are disabled, and a Discord outage cannot make CI fail. You can try the script locally against any webhook by setting the variables listed at the top of the script.
