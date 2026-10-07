@@ -10,6 +10,7 @@
 # Common
 #   MODE                  pr | ci
 #   DISCORD_WEBHOOK_URL   the secret; unset/empty (forks, Dependabot) = skip quietly
+#   DISCORD_USERNAME      optional: the name shown as the sender (default "ai-city")
 #
 # MODE=pr  (a pull request was opened, reopened or closed)
 #   ACTION  MERGED  NUMBER  TITLE  URL  AUTHOR  HEAD  BASE
@@ -40,6 +41,11 @@ case "$url" in
 esac
 
 mode="${MODE:-}"
+
+# Discord refuses senders whose name contains "discord" or "clyde"; fall back to the default
+sender="${DISCORD_USERNAME:-ai-city}"
+sender="${sender:0:80}"
+case "$(printf '%s' "$sender" | tr '[:upper:]' '[:lower:]')" in *discord* | *clyde*) sender="ai-city" ;; esac
 
 # ── decide what to say ────────────────────────────────────────────────────
 
@@ -118,10 +124,11 @@ payload="$(jq -n \
   --arg link "$link" \
   --arg footer "$footer" \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg sender "$sender" \
   --argjson color "$color" \
   --argjson fields "$fields" \
   '{
-    username: "GitHub",
+    username: $sender,
     allowed_mentions: { parse: [] },
     embeds: [{
       title: $title,

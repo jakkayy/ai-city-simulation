@@ -235,4 +235,5 @@ Notes:
 - The CI messages use `workflow_run`, which GitHub only fires for workflow files on the default branch, so they start once `notify.yml` is on `main`. The pull request messages work as soon as the file is in the PR.
 - Without the secret (pull requests from forks, Dependabot) every step skips quietly.
 - The webhook URL is never printed; commit messages and PR titles reach the script as environment variables, only the first line is used, JSON is built by `jq`, and mentions are disabled (an `@everyone` in a commit message does not ping anyone). A Discord outage cannot fail the workflow.
+- The sender name shown in Discord is `ai-city`. To change it, set a `DISCORD_USERNAME` variable in the workflow's `env:` (Discord refuses names containing "discord" or "clyde"; those fall back to `ai-city`). The avatar is the one set on the webhook in Discord.
 - To try the script locally, set `MODE` and the variables listed at the top of `scripts/notify-discord.sh`.
